@@ -87,17 +87,17 @@ function createInvoicePDF(invoice: any): Uint8Array {
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text(invoice.client.name, 120, 40);
+  doc.text(invoice.client?.name || 'Client inconnu', 120, 40);
   
   doc.setFont('helvetica', 'normal');
-  const clientAddress = invoice.client.address.split('\n');
+  const clientAddress = (invoice.client?.address || 'Adresse inconnue').split('\n');
   yPos = 45;
   clientAddress.forEach((line: string) => {
     doc.text(line, 120, yPos);
     yPos += 5;
   });
   
-  if (invoice.client.legalForm) {
+  if (invoice.client?.legalForm) {
     doc.text(`Forme juridique: ${invoice.client.legalForm}`, 120, yPos + 5);
   }
   
@@ -124,7 +124,7 @@ function createInvoicePDF(invoice: any): Uint8Array {
   
   // Table borders
   doc.setDrawColor(221, 221, 221);
-  doc.rect(20, tableStartY, 185, 8);
+  doc.rect(20, tableStartY, 180, 8);
   
   // Table Items
   doc.setFont('helvetica', 'normal');
@@ -136,7 +136,7 @@ function createInvoicePDF(invoice: any): Uint8Array {
     // Row background (alternating)
     if (index % 2 === 1) {
       doc.setFillColor(250, 250, 250);
-      doc.rect(20, currentY, 185, rowHeight, 'F');
+      doc.rect(20, currentY, 180, rowHeight, 'F');
     }
     
     // Item data
