@@ -16,15 +16,15 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const sendInvoiceEmail = useAction(api.email.sendInvoiceEmail);
   
   const [showEmailConfirm, setShowEmailConfirm] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cette facture?")) {
-      try {
-        await deleteInvoice({ id: id as any });
-        toast.success("Facture supprimée!");
-      } catch {
-        toast.error("Échec de la suppression de la facture");
-      }
+    try {
+      await deleteInvoice({ id: id as any });
+      toast.success("Facture supprimée!");
+      setShowDeleteConfirm(null);
+    } catch {
+      toast.error("Échec de la suppression de la facture");
     }
   };
 
@@ -198,7 +198,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                     Dupliquer
                   </button>
                   <button
-                    onClick={() => void handleDelete(invoice._id)}
+                    onClick={() => setShowDeleteConfirm(invoice._id)}
                     className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50"
                   >
                     Supprimer
@@ -255,6 +255,57 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                 >
                   Envoyer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (() => {
+        const invoice = invoices.find(inv => inv._id === showDeleteConfirm);
+        if (!invoice) return null;
+        
+        const formatCurrency = (amount: number) => {
+          return new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'EUR',
+          }).format(amount);
+        };
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
+              <div className="mb-4">
+                <p className="text-gray-700 mb-4">
+                  Êtes-vous sûr de vouloir supprimer cette facture ? Cette action est irréversible.
+                </p>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-gray-700 mb-1">
+                    <strong>Facture:</strong> {invoice.invoiceNumber}
+                  </p>
+                  <p className="text-gray-700 mb-1">
+                    <strong>Client:</strong> {invoice.client?.name || 'Client inconnu'}
+                  </p>
+                  <p className="text-gray-700">
+                    <strong>Montant:</strong> {formatCurrency(invoice.totalAmount)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => void handleDelete(showDeleteConfirm)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Supprimer
                 </button>
               </div>
             </div>
