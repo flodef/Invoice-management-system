@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { toast } from "sonner";
-import { Id } from "../../convex/_generated/dataModel";
+import { useState } from 'react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { toast } from 'sonner';
+import { Id } from '../../convex/_generated/dataModel';
 
 export function ClientManager() {
   const clients = useQuery(api.invoices.getClients) || [];
@@ -10,19 +10,19 @@ export function ClientManager() {
   const deleteClient = useMutation(api.invoices.deleteClient);
 
   const [showForm, setShowForm] = useState(false);
-  const [editingClient, setEditingClient] = useState<Id<"clients"> | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Id<"clients"> | null>(null);
+  const [editingClient, setEditingClient] = useState<Id<'clients'> | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Id<'clients'> | null>(null);
   const [formData, setFormData] = useState({
-    name: "",
-    contactName: "",
-    address: "",
-    email: "",
-    legalForm: "SARL",
-    status: "active",
+    name: '',
+    contactName: '',
+    address: '',
+    email: '',
+    legalForm: 'SARL',
+    status: 'active',
   });
 
   const resetForm = () => {
-    setFormData({ name: "", contactName: "", address: "", email: "", legalForm: "SARL", status: "active" });
+    setFormData({ name: '', contactName: '', address: '', email: '', legalForm: 'SARL', status: 'active' });
     setEditingClient(null);
     setShowForm(false);
   };
@@ -30,10 +30,10 @@ export function ClientManager() {
   const handleEdit = (client: any) => {
     setFormData({
       name: client.name,
-      contactName: client.contactName || "",
+      contactName: client.contactName || '',
       address: client.address,
       email: client.email,
-      legalForm: client.legalForm || "",
+      legalForm: client.legalForm || '',
       status: client.status,
     });
     setEditingClient(client._id);
@@ -47,7 +47,7 @@ export function ClientManager() {
         id: editingClient || undefined,
         ...formData,
       });
-      toast.success(editingClient ? "Client mis à jour!" : "Client ajouté!");
+      toast.success(editingClient ? 'Client mis à jour!' : 'Client ajouté!');
       resetForm();
     } catch (error) {
       console.error('Client save error:', error);
@@ -55,13 +55,13 @@ export function ClientManager() {
     }
   };
 
-  const handleDelete = async (id: Id<"clients">) => {
+  const handleDelete = async (id: Id<'clients'>) => {
     try {
       await deleteClient({ id });
-      toast.success("Client supprimé!");
+      toast.success('Client supprimé!');
       setShowDeleteConfirm(null);
     } catch {
-      toast.error("Échec de la suppression du client");
+      toast.error('Échec de la suppression du client');
     }
   };
 
@@ -69,41 +69,39 @@ export function ClientManager() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Clients</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Ajouter un client
-        </button>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Ajouter un client
+          </button>
+        )}
       </div>
 
       {showForm && (
         <div className="mb-6 p-4 border rounded-lg bg-gray-50">
           <h3 className="text-lg font-semibold mb-4">
-            {editingClient ? "Modifier le client" : "Ajouter un nouveau client"}
+            {editingClient ? 'Modifier le client' : 'Ajouter un nouveau client'}
           </h3>
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+          <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Entreprise
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Entreprise</label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom du contact
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom du contact</label>
                 <input
                   type="text"
                   value={formData.contactName}
-                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                  onChange={e => setFormData({ ...formData, contactName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Prénom"
                   required
@@ -112,37 +110,31 @@ export function ClientManager() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Adresse
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
               <textarea
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                rows={3}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                rows={2}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Forme juridique
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Forme juridique</label>
               <select
                 value={formData.legalForm}
-                onChange={(e) => setFormData({ ...formData, legalForm: e.target.value })}
+                onChange={e => setFormData({ ...formData, legalForm: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="SARL">SARL</option>
@@ -151,12 +143,10 @@ export function ClientManager() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Statut
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={e => setFormData({ ...formData, status: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="active">Actif</option>
@@ -168,7 +158,7 @@ export function ClientManager() {
                 type="submit"
                 className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
-                {editingClient ? "Mettre à jour" : "Ajouter"} le client
+                {editingClient ? 'Mettre à jour' : 'Ajouter'} le client
               </button>
               <button
                 type="button"
@@ -186,22 +176,19 @@ export function ClientManager() {
         {clients.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Aucun client pour le moment. Ajoutez votre premier client!</p>
         ) : (
-          clients.map((client) => (
+          clients.map(client => (
             <div key={client._id} className="border rounded-lg p-4 hover:bg-gray-50">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg">{client.name}</h3>
                   <p className="text-gray-600">{client.email}</p>
                   <p className="text-gray-600 text-sm mt-1">{client.address}</p>
-                  {client.legalForm && (
-                    <p className="text-gray-600 text-sm mt-1">Forme juridique: {client.legalForm}</p>
-                  )}
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
-                    client.status === "active" 
-                      ? "bg-green-100 text-green-800" 
-                      : "bg-gray-100 text-gray-800"
-                  }`}>
-                    {client.status === "active" ? "Actif" : "Inactif"}
+                  <span
+                    className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                      client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {client.status === 'active' ? 'Actif' : 'Inactif'}
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -223,50 +210,51 @@ export function ClientManager() {
           ))
         )}
       </div>
-      
+
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (() => {
-        const client = clients.find(c => c._id === showDeleteConfirm);
-        if (!client) return null;
-        
-        return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
-              <div className="mb-4">
-                <p className="text-gray-700 mb-4">
-                  Êtes-vous sûr de vouloir supprimer ce client ? Cette action est irréversible.
-                </p>
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-gray-700 mb-1">
-                    <strong>Nom:</strong> {client.name}
+      {showDeleteConfirm &&
+        (() => {
+          const client = clients.find(c => c._id === showDeleteConfirm);
+          if (!client) return null;
+
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
+                <div className="mb-4">
+                  <p className="text-gray-700 mb-4">
+                    Êtes-vous sûr de vouloir supprimer ce client ? Cette action est irréversible.
                   </p>
-                  <p className="text-gray-700 mb-1">
-                    <strong>Contact:</strong> {client.contactName}
-                  </p>
-                  <p className="text-gray-700">
-                    <strong>Email:</strong> {client.email}
-                  </p>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-gray-700 mb-1">
+                      <strong>Nom:</strong> {client.name}
+                    </p>
+                    <p className="text-gray-700 mb-1">
+                      <strong>Contact:</strong> {client.contactName}
+                    </p>
+                    <p className="text-gray-700">
+                      <strong>Email:</strong> {client.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(null)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => void handleDelete(showDeleteConfirm)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Supprimer
+                  </button>
                 </div>
               </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(null)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={() => void handleDelete(showDeleteConfirm)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-                >
-                  Supprimer
-                </button>
-              </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
     </div>
   );
 }
