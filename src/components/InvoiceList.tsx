@@ -10,6 +10,7 @@ interface InvoiceListProps {
 export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const invoices = useQuery(api.invoices.getInvoices) || [];
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
+  const duplicateInvoice = useMutation(api.invoices.duplicateInvoice);
   const generatePDF = useAction(api.pdf.generateInvoicePDF);
   const getStorageUrl = useAction(api.pdf.getStorageUrl);
   const sendInvoiceEmail = useAction(api.email.sendInvoiceEmail);
@@ -24,6 +25,21 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       } catch {
         toast.error("Échec de la suppression de la facture");
       }
+    }
+  };
+
+  const handleDuplicate = async (id: string) => {
+    try {
+      toast.loading("Duplication de la facture...");
+      const newInvoiceId = await duplicateInvoice({ id: id as any });
+      toast.dismiss();
+      toast.success("Facture dupliquée avec succès!");
+      // Redirect to edit the new invoice
+      onEditInvoice(newInvoiceId);
+    } catch (error) {
+      toast.dismiss();
+      console.error('Duplicate error:', error);
+      toast.error("Échec de la duplication de la facture");
     }
   };
 
@@ -174,6 +190,12 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                     className="text-purple-600 hover:text-purple-800 px-3 py-1 rounded-md hover:bg-purple-50"
                   >
                     Télécharger PDF
+                  </button>
+                  <button
+                    onClick={() => void handleDuplicate(invoice._id)}
+                    className="text-orange-600 hover:text-orange-800 px-3 py-1 rounded-md hover:bg-orange-50"
+                  >
+                    Dupliquer
                   </button>
                   <button
                     onClick={() => void handleDelete(invoice._id)}

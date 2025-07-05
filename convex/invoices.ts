@@ -385,6 +385,48 @@ export const deleteInvoice = mutation({
   },
 });
 
+// Duplicate invoice
+export const duplicateInvoice = mutation({
+  args: { id: v.id("invoices") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const originalInvoice = await ctx.db.get(args.id);
+    if (!originalInvoice || originalInvoice.userId !== userId) {
+      throw new Error("Invoice not found");
+    }
+
+    // Generate new invoice number
+    const invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    
+    const currentYear = new Date().getFullYear();
+    const yearInvoices = invoices.filter(inv => 
+      inv.invoiceNumber.startsWith(currentYear.toString())
+    );
+    const nextNumber = yearInvoices.length + 1;
+    const invoiceNumber = `${currentYear}-${nextNumber.toString().padStart(3, '0')}`;
+
+    // Create duplicate with new data
+    const currentDate = Date.now();
+    const duplicateData = {
+      userId,
+      invoiceNumber,
+      clientId: originalInvoice.clientId, // Keep original client, can be changed in editor
+      items: originalInvoice.items,
+      totalAmount: originalInvoice.totalAmount,
+      status: "draft" as const,
+      invoiceDate: currentDate,
+      paymentDate: currentDate + (30 * 24 * 60 * 60 * 1000), // 30 days from now
+    };
+
+    return await ctx.db.insert("invoices", duplicateData);
+  },
+});
+
 // Get monthly templates
 export const getMonthlyTemplates = query({
   args: {},
