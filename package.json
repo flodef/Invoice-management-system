@@ -41,5 +41,14 @@
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
     "vite": "^5.4.19"
+  },
+  "prettier": {
+    "useTabs": false,
+    "tabWidth": 2,
+    "singleQuote": true,
+    "arrowParens": "avoid",
+    "printWidth": 120,
+    "trailingComma": "all",
+    "semi": true
   }
 }
