@@ -397,18 +397,26 @@ export const duplicateInvoice = mutation({
       throw new Error("Invoice not found");
     }
 
-    // Generate new invoice number
+    // Generate new invoice number using the same logic as createInvoice
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const prefix = `${year}${month}`;
+
+    // Find the highest invoice number for this month
     const invoices = await ctx.db
       .query("invoices")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-    
-    const currentYear = new Date().getFullYear();
-    const yearInvoices = invoices.filter(inv => 
-      inv.invoiceNumber.startsWith(currentYear.toString())
-    );
-    const nextNumber = yearInvoices.length + 1;
-    const invoiceNumber = `${currentYear}-${nextNumber.toString().padStart(3, '0')}`;
+
+    const monthInvoices = invoices.filter(inv => inv.invoiceNumber.startsWith(prefix));
+    const maxNumber = monthInvoices.reduce((max, inv) => {
+      const num = parseInt(inv.invoiceNumber.slice(-2));
+      return Math.max(max, num);
+    }, 0);
+
+    const nextNumber = String(maxNumber + 1).padStart(2, '0');
+    const invoiceNumber = `${prefix}${nextNumber}`;
 
     // Create duplicate with new data
     const currentDate = Date.now();
