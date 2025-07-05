@@ -78,8 +78,8 @@ export function ServiceManager() {
             {editingService ? 'Modifier le service' : 'Ajouter un nouveau service'}
           </h3>
           <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="md:col-span-9">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Libellé du service</label>
                 <input
                   type="text"
@@ -89,8 +89,8 @@ export function ServiceManager() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prix par défaut HT</label>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prix HT</label>
                 <input
                   type="number"
                   step="1"
@@ -103,18 +103,6 @@ export function ServiceManager() {
                   required
                 />
               </div>
-            </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isGlobal"
-                checked={formData.isGlobal}
-                onChange={e => setFormData({ ...formData, isGlobal: e.target.checked })}
-                className="mr-2"
-              />
-              <label htmlFor="isGlobal" className="text-sm text-gray-700">
-                Service global (les modifications affectent toutes les factures non envoyées)
-              </label>
             </div>
             <div className="flex gap-2">
               <button
