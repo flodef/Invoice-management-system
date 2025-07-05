@@ -69,34 +69,26 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     }
   };
 
-  const handleDownloadPDF = async (id: string) => {
+  const handleViewPDF = async (id: string) => {
     try {
       toast.loading('Génération du PDF...');
       const result = await generatePDF({ invoiceId: id as any });
       toast.dismiss();
 
       if (result?.storageId) {
-        // Get the storage URL for download
         const storageUrl = await getStorageUrl({ storageId: result.storageId });
 
         if (storageUrl) {
-          // Create download link
+          // Fetch and create blob URL
           const response = await fetch(storageUrl);
           const blob = await response.blob();
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          // Create a readable filename with invoice number and client name
-          const invoice = invoices.find(inv => inv._id === id);
-          const sanitizedClientName =
-            invoice?.clientName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-') || 'Client';
-          link.download = `Facture-${invoice?.invoiceNumber || id}-${sanitizedClientName}.pdf`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(downloadUrl);
+          const pdfBlobUrl = window.URL.createObjectURL(blob);
 
-          toast.success('PDF téléchargé avec succès!');
+          // Set state to show PDF viewer with this URL
+          setPdfUrl(pdfBlobUrl);
+          setShowPdfViewer(id);
+
+          toast.success('PDF généré avec succès!');
         } else {
           throw new Error("Impossible de récupérer l'URL du PDF");
         }
@@ -108,6 +100,41 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       toast.dismiss();
       toast.error('Échec de la génération du PDF');
     }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pdfUrl || !showPdfViewer) return;
+
+    // Find the invoice to get the invoice number and client name
+    const invoice = invoices.find(inv => inv._id === showPdfViewer);
+    let filename = `Facture-${showPdfViewer}.pdf`;
+
+    if (invoice) {
+      // Sanitize client name to make it filename-safe
+      const sanitizedClientName = invoice.clientName
+        .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters
+        .replace(/\s+/g, '-'); // Replace spaces with hyphens
+
+      // Format: Facture-YYYYMMXX-COMPANY_NAME.pdf
+      filename = `Facture-${invoice.invoiceNumber}-${sanitizedClientName}.pdf`;
+    }
+
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success('PDF téléchargé avec succès!');
+  };
+
+  const handleClosePdfViewer = () => {
+    if (pdfUrl) {
+      window.URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+    setShowPdfViewer(null);
   };
 
   const formatDate = (timestamp: number) => {
@@ -171,7 +198,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   };
 
   const groupedInvoices = groupInvoicesByMonth();
-  
+
   // Initialize current month as open when invoices load or change
   useEffect(() => {
     if (invoices.length > 0 && !initializedRef.current) {
@@ -181,7 +208,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         return monthKey === currentMonthKey;
       });
-      
+
       if (hasCurrentMonthInvoices) {
         initializedRef.current = true;
         setOpenMonths(prev => new Set([...prev, currentMonthKey]));
@@ -193,7 +220,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoices]); // Run when invoices change
 
   const getStatusColor = (status: string) => {
@@ -304,10 +331,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                   </button>
                                 )}
                                 <button
-                                  onClick={() => void handleDownloadPDF(invoice._id)}
+                                  onClick={() => void handleViewPDF(invoice._id)}
                                   className="text-purple-600 hover:text-purple-800 px-3 py-1 rounded-md hover:bg-purple-50"
                                 >
-                                  Télécharger PDF
+                                  Visualiser PDF
                                 </button>
                                 <button
                                   onClick={() => void handleDuplicate(invoice._id)}
@@ -336,6 +363,85 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
           </div>
         )}
       </div>
+
+      {/* PDF Viewer Overlay */}
+      {showPdfViewer && pdfUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-full max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Aperçu de la facture</h3>
+              <div className="flex gap-3">
+                {(() => {
+                  // Check if the current invoice is a draft (status !== 'sent')
+                  const currentInvoice = invoices.find(inv => inv._id === showPdfViewer);
+                  const isDraft = currentInvoice?.status !== 'sent';
+                  
+                  return (
+                    <>
+                      {isDraft && (
+                        <button
+                          onClick={() => setShowEmailConfirm(showPdfViewer)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
+                          </svg>
+                          Envoyer par email
+                        </button>
+                      )}
+                      <button
+                        onClick={handleDownloadPDF}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                          />
+                        </svg>
+                        Télécharger
+                      </button>
+                    </>
+                  );
+                })()}
+                <button onClick={handleClosePdfViewer} className="text-gray-500 hover:text-gray-700">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-gray-100">
+              <iframe src={pdfUrl} className="w-full h-full" title="PDF Viewer" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Email Confirmation Modal */}
       {showEmailConfirm &&
