@@ -64,26 +64,23 @@ export const sendInvoiceEmail = action({
     };
 
     // Create email content
+    const invoiceDate = new Date(invoice.invoiceDate);
+    const paymentDate = new Date(invoice.paymentDate);
     const emailSubject = `Facture ${invoice.invoiceNumber} - ${invoice.userProfile.name}`;
     const emailBody = `
 Bonjour ${invoice.client.contactName},
 
-Veuillez trouver ci-joint la facture ${invoice.invoiceNumber} d'un montant de ${formatCurrency(invoice.totalAmount)}.
+Voici la facture ${invoice.invoiceNumber} du mois de ${invoiceDate.toLocaleString('fr-FR', { month: 'long' })} d'un montant de ${formatCurrency(invoice.totalAmount)}.
 
 Détails de la facture :
 - Numéro : ${invoice.invoiceNumber}
-- Date : ${new Date(invoice.invoiceDate).toLocaleDateString('fr-FR')}
+- Date : ${invoiceDate.toLocaleDateString('fr-FR')}
 - Montant total HT : ${formatCurrency(invoice.totalAmount)}
-- Date d'échéance : ${new Date(invoice.paymentDate).toLocaleDateString('fr-FR')}
+- Date d'échéance : ${paymentDate.toLocaleDateString('fr-FR')}
 
-Pour le règlement, vous pouvez effectuer un virement bancaire avec les coordonnées suivantes :
-- IBAN : ${invoice.userProfile.iban}
-- BIC : ${invoice.userProfile.bic}
-- Banque : ${invoice.userProfile.bank}
+En te souhaitant une excellente journée,
 
-Cordialement,
-${invoice.userProfile.name}
-${invoice.userProfile.email}
+${invoice.userProfile.name.split(" ")[0]}
     `.trim();
 
     // Send email
