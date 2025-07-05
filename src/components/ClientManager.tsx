@@ -11,6 +11,7 @@ export function ClientManager() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Id<"clients"> | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Id<"clients"> | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     contactName: "",
@@ -55,13 +56,12 @@ export function ClientManager() {
   };
 
   const handleDelete = async (id: Id<"clients">) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce client?")) {
-      try {
-        await deleteClient({ id });
-        toast.success("Client supprimé!");
-      } catch {
-        toast.error("Échec de la suppression du client");
-      }
+    try {
+      await deleteClient({ id });
+      toast.success("Client supprimé!");
+      setShowDeleteConfirm(null);
+    } catch {
+      toast.error("Échec de la suppression du client");
     }
   };
 
@@ -212,7 +212,7 @@ export function ClientManager() {
                     Modifier
                   </button>
                   <button
-                    onClick={() => void handleDelete(client._id)}
+                    onClick={() => setShowDeleteConfirm(client._id)}
                     className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50"
                   >
                     Supprimer
@@ -223,6 +223,50 @@ export function ClientManager() {
           ))
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (() => {
+        const client = clients.find(c => c._id === showDeleteConfirm);
+        if (!client) return null;
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
+              <div className="mb-4">
+                <p className="text-gray-700 mb-4">
+                  Êtes-vous sûr de vouloir supprimer ce client ? Cette action est irréversible.
+                </p>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-gray-700 mb-1">
+                    <strong>Nom:</strong> {client.name}
+                  </p>
+                  <p className="text-gray-700 mb-1">
+                    <strong>Contact:</strong> {client.contactName}
+                  </p>
+                  <p className="text-gray-700">
+                    <strong>Email:</strong> {client.email}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => void handleDelete(showDeleteConfirm)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -11,6 +11,7 @@ export function ServiceManager() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState<Id<"services"> | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Id<"services"> | null>(null);
   const [formData, setFormData] = useState({
     label: "",
     defaultPrice: 0,
@@ -48,13 +49,12 @@ export function ServiceManager() {
   };
 
   const handleDelete = async (id: Id<"services">) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce service?")) {
-      try {
-        await deleteService({ id });
-        toast.success("Service supprimé!");
-      } catch {
-        toast.error("Échec de la suppression du service");
-      }
+    try {
+      await deleteService({ id });
+      toast.success("Service supprimé!");
+      setShowDeleteConfirm(null);
+    } catch {
+      toast.error("Échec de la suppression du service");
     }
   };
 
@@ -159,7 +159,7 @@ export function ServiceManager() {
                     Modifier
                   </button>
                   <button
-                    onClick={() => void handleDelete(service._id)}
+                    onClick={() => setShowDeleteConfirm(service._id)}
                     className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50"
                   >
                     Supprimer
@@ -170,6 +170,57 @@ export function ServiceManager() {
           ))
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (() => {
+        const service = services.find(s => s._id === showDeleteConfirm);
+        if (!service) return null;
+        
+        const formatCurrency = (amount: number) => {
+          return new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'EUR',
+          }).format(amount);
+        };
+        
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
+              <div className="mb-4">
+                <p className="text-gray-700 mb-4">
+                  Êtes-vous sûr de vouloir supprimer ce service ? Cette action est irréversible.
+                </p>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-gray-700 mb-1">
+                    <strong>Service:</strong> {service.label}
+                  </p>
+                  <p className="text-gray-700 mb-1">
+                    <strong>Prix par défaut:</strong> {formatCurrency(service.defaultPrice)}
+                  </p>
+                  <p className="text-gray-700">
+                    <strong>Type:</strong> {service.isGlobal ? 'Service global' : 'Service local'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => void handleDelete(showDeleteConfirm)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
