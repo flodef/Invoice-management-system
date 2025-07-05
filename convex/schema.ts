@@ -46,6 +46,7 @@ const applicationTables = {
       price: v.number(),
       discount: v.optional(v.number()), // discount value
       discountUnit: v.optional(v.string()), // "%" or "€"
+      discountText: v.optional(v.string()), // description of the discount
       total: v.number(),
     })),
     pdfStorageId: v.optional(v.id("_storage")),

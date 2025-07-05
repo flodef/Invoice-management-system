@@ -39,7 +39,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const handleDuplicate = (id: string) => {
     setShowDuplicateConfirm(id);
   };
-  
+
   // Actual duplication after confirmation
   const confirmDuplicate = async (id: string) => {
     try {
@@ -465,7 +465,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                 >
                                   Dupliquer
                                 </button>
-                                {!isDraft && (
+                                {isDraft && (
                                   <button
                                     onClick={() => setShowDeleteConfirm(invoice._id)}
                                     className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50"
@@ -685,7 +685,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
             </div>
           );
         })()}
-      
+
       {/* Duplicate Confirmation Modal */}
       {showDuplicateConfirm &&
         (() => {

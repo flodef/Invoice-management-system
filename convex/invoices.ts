@@ -275,6 +275,7 @@ export const createInvoice = mutation({
       price: v.number(),
       discount: v.optional(v.number()),
       discountUnit: v.optional(v.string()),
+      discountText: v.optional(v.string()), // Add missing discountText field
       total: v.number(),
     })),
   },
@@ -306,6 +307,7 @@ export const createInvoice = mutation({
 export const updateInvoice = mutation({
   args: {
     id: v.id("invoices"),
+    clientId: v.optional(v.id("clients")), // Allow changing client
     items: v.array(v.object({
       serviceId: v.id("services"),
       label: v.string(),
@@ -313,6 +315,7 @@ export const updateInvoice = mutation({
       price: v.number(),
       discount: v.optional(v.number()),
       discountUnit: v.optional(v.string()),
+      discountText: v.optional(v.string()), // Add missing discountText field
       total: v.number(),
     })),
   },
@@ -327,10 +330,18 @@ export const updateInvoice = mutation({
 
     const totalAmount = args.items.reduce((sum, item) => sum + item.total, 0);
 
-    await ctx.db.patch(args.id, {
+    // Create patch object with required fields
+    const patchObj: any = {
       items: args.items,
       totalAmount,
-    });
+    };
+    
+    // Add clientId to patch if provided
+    if (args.clientId) {
+      patchObj.clientId = args.clientId;
+    }
+    
+    await ctx.db.patch(args.id, patchObj);
   },
 });
 
