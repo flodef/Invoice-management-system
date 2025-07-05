@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.80",
+    "@tabler/icons-react": "^3.34.0",
     "@types/nodemailer": "^6.4.17",
     "clsx": "^2.1.1",
     "convex": "^1.24.2",

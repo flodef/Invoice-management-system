@@ -3,6 +3,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import { Id } from '../../convex/_generated/dataModel';
+import { IconEdit, IconTrash } from '@tabler/icons-react';
 
 export function ClientManager() {
   const clients = useQuery(api.invoices.getClients) || [];
@@ -194,15 +195,17 @@ export function ClientManager() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(client)}
-                    className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md hover:bg-blue-50"
+                    className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
+                    title="Modifier"
                   >
-                    Modifier
+                    <IconEdit size={20} stroke={1.5} />
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(client._id)}
-                    className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50"
+                    className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
+                    title="Supprimer"
                   >
-                    Supprimer
+                    <IconTrash size={20} stroke={1.5} />
                   </button>
                 </div>
               </div>

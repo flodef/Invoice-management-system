@@ -2,6 +2,7 @@ import { useMutation, useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
+import { IconEdit, IconMail, IconFileDownload, IconCopy, IconTrash, IconEye } from '@tabler/icons-react';
 
 interface InvoiceListProps {
   onEditInvoice: (id: string) => void;
@@ -440,37 +441,42 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                 {isDraft && (
                                   <button
                                     onClick={() => onEditInvoice(invoice._id)}
-                                    className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md hover:bg-blue-50"
+                                    className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
+                                    title="Modifier"
                                   >
-                                    Modifier
+                                    <IconEdit size={20} stroke={1.5} />
                                   </button>
                                 )}
                                 {isDraft && (
                                   <button
                                     onClick={() => setShowEmailConfirm(invoice._id)}
-                                    className="text-green-600 hover:text-green-800 px-3 py-1 rounded-md hover:bg-green-50"
+                                    className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
+                                    title="Envoyer par email"
                                   >
-                                    Envoyer par email
+                                    <IconMail size={20} stroke={1.5} />
                                   </button>
                                 )}
                                 <button
                                   onClick={() => void handleViewPDF(invoice._id)}
-                                  className="text-purple-600 hover:text-purple-800 px-3 py-1 rounded-md hover:bg-purple-50"
+                                  className="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-50"
+                                  title="Visualiser PDF"
                                 >
-                                  Visualiser PDF
+                                  <IconEye size={20} stroke={1.5} />
                                 </button>
                                 <button
                                   onClick={() => void handleDuplicate(invoice._id)}
-                                  className="text-orange-600 hover:text-orange-800 px-3 py-1 rounded-md hover:bg-orange-50"
+                                  className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
+                                  title="Dupliquer"
                                 >
-                                  Dupliquer
+                                  <IconCopy size={20} stroke={1.5} />
                                 </button>
                                 {isDraft && (
                                   <button
                                     onClick={() => setShowDeleteConfirm(invoice._id)}
-                                    className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50"
+                                    className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
+                                    title="Supprimer"
                                   >
-                                    Supprimer
+                                    <IconTrash size={20} stroke={1.5} />
                                   </button>
                                 )}
                               </div>
@@ -527,21 +533,8 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                         onClick={() => void handleDownloadPDF(showPdfViewer)}
                         className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                          />
-                        </svg>
-                        Télécharger
+                        <IconFileDownload size={20} stroke={1.5} />
+                        Télécharger PDF
                       </button>
                     </>
                   );
