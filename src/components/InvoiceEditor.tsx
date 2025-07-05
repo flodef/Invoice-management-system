@@ -30,8 +30,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
   const createInvoice = useMutation(api.invoices.createInvoice);
   const updateInvoice = useMutation(api.invoices.updateInvoice);
   
-  // Check if invoice is read-only (sent invoices cannot be modified)
-  const isReadOnly = !isNew && invoice?.status === "sent";
 
   const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | "">("");
   const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -172,7 +170,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
               onChange={(e) => setSelectedClientId(e.target.value as Id<"clients"> | "")}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
-              disabled={isReadOnly} // Can't change client on sent invoices
             >
               <option value="">Sélectionner un client</option>
               {clients.map((client) => (
@@ -186,7 +183,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Éléments de la facture</h3>
-              {!isReadOnly && (
                 <button
                   type="button"
                   onClick={addItem}
@@ -194,7 +190,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                 >
                   Ajouter un élément
                 </button>
-              )}
             </div>
 
             <div className="space-y-4">
@@ -209,7 +204,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                         value={item.serviceId}
                         onChange={(e) => updateItem(index, "serviceId", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={isReadOnly}
                       >
                         {services.map((service) => (
                           <option key={service._id} value={service._id}>
@@ -228,7 +222,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                         value={item.quantity}
                         onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={isReadOnly}
                       />
                     </div>
                     <div>
@@ -250,7 +243,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                         value={item.discount || 0}
                         onChange={(e) => updateItem(index, "discount", parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={isReadOnly}
                       />
                     </div>
                     <div>
@@ -261,7 +253,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                         value={item.discountUnit || "%"}
                         onChange={(e) => updateItem(index, "discountUnit", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={isReadOnly}
                       >
                         <option value="%">%</option>
                         <option value="€">€</option>
@@ -275,7 +266,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                         {formatCurrency(item.total)}
                       </div>
                     </div>
-                    {!isReadOnly && (
                       <div>
                         <button
                           type="button"
@@ -285,7 +275,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                           Supprimer
                         </button>
                       </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -311,18 +300,12 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
           )}
 
           <div className="flex gap-4">
-            {!isReadOnly ? (
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                {isNew ? "Créer la facture" : "Mettre à jour la facture"}
-              </button>
-            ) : (
-              <div className="bg-gray-100 text-gray-600 px-6 py-2 rounded-md border">
-                Facture envoyée - Lecture seule
-              </div>
-            )}
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              {isNew ? "Créer la facture" : "Mettre à jour la facture"}
+            </button>
             <button
               type="button"
               onClick={onBack}

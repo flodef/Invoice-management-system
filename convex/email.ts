@@ -1,22 +1,23 @@
-"use node";
+'use node';
 
-import { action } from "./_generated/server";
-import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { action } from './_generated/server';
+import { v } from 'convex/values';
+import { api } from './_generated/api';
 
 // Email sending action using nodemailer
 export const sendInvoiceEmail = action({
   args: {
-    invoiceId: v.id("invoices"),
+    invoiceId: v.id('invoices'),
+    customMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Get invoice data with all relations
     const invoice = await ctx.runQuery(api.invoices.getInvoiceById, {
       id: args.invoiceId,
     });
-    
+
     if (!invoice || !invoice.userProfile || !invoice.client) {
-      throw new Error("Invoice, user profile, or client not found");
+      throw new Error('Invoice, user profile, or client not found');
     }
 
     // Generate PDF
@@ -25,7 +26,7 @@ export const sendInvoiceEmail = action({
     });
 
     if (!pdfResult?.storageId) {
-      throw new Error("Failed to generate PDF");
+      throw new Error('Failed to generate PDF');
     }
 
     // Get PDF URL
@@ -34,7 +35,7 @@ export const sendInvoiceEmail = action({
     });
 
     if (!pdfUrl) {
-      throw new Error("Failed to get PDF URL");
+      throw new Error('Failed to get PDF URL');
     }
 
     // Fetch PDF data
@@ -65,22 +66,20 @@ export const sendInvoiceEmail = action({
 
     // Create email content
     const invoiceDate = new Date(invoice.invoiceDate);
-    const paymentDate = new Date(invoice.paymentDate);
-    const emailSubject = `Facture ${invoice.invoiceNumber} - ${invoice.userProfile.name}`;
+
+    // Random greeting
+    const greetings = ['Bonjour', 'Salut', 'Coucou'];
+    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+    const emailSubject = `Facture n°${invoice.invoiceNumber}`;
     const emailBody = `
-Bonjour ${invoice.client.contactName},
-
-Voici la facture ${invoice.invoiceNumber} du mois de ${invoiceDate.toLocaleString('fr-FR', { month: 'long' })} d'un montant de ${formatCurrency(invoice.totalAmount)}.
-
-Détails de la facture :
-- Numéro : ${invoice.invoiceNumber}
-- Date : ${invoiceDate.toLocaleDateString('fr-FR')}
-- Montant total HT : ${formatCurrency(invoice.totalAmount)}
-- Date d'échéance : ${paymentDate.toLocaleDateString('fr-FR')}
+${randomGreeting} ${invoice.client.contactName},
+${args.customMessage ? `\n${args.customMessage}\n` : ''}
+Voici la facture n°${invoice.invoiceNumber} du mois de ${invoiceDate.toLocaleString('fr-FR', { month: 'long' })} d'un montant de ${formatCurrency(invoice.totalAmount)}.
 
 En te souhaitant une excellente journée,
 
-${invoice.userProfile.name.split(" ")[0]}
+${invoice.userProfile.name.split(' ')[0]}
     `.trim();
 
     // Send email
@@ -88,7 +87,7 @@ ${invoice.userProfile.name.split(" ")[0]}
       await transporter.sendMail({
         from: `"${invoice.userProfile.name}" <${process.env.SMTP_FROM_EMAIL}>`,
         to: invoice.client.email,
-        bcc: process.env.SMTP_FROM_EMAIL,
+        bcc: invoice.userProfile.email,
         subject: emailSubject,
         text: emailBody,
         attachments: [
@@ -105,7 +104,7 @@ ${invoice.userProfile.name.split(" ")[0]}
         id: args.invoiceId,
       });
 
-      return { success: true, message: "Email envoyé avec succès!" };
+      return { success: true, message: 'Email envoyé avec succès!' };
     } catch (error) {
       console.error('Error sending email:', error);
       throw new Error("Échec de l'envoi de l'email");
