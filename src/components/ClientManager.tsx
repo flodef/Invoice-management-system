@@ -16,12 +16,12 @@ export function ClientManager() {
     contactName: "",
     address: "",
     email: "",
-    legalForm: "",
+    legalForm: "SARL",
     status: "active",
   });
 
   const resetForm = () => {
-    setFormData({ name: "", contactName: "", address: "", email: "", legalForm: "", status: "active" });
+    setFormData({ name: "", contactName: "", address: "", email: "", legalForm: "SARL", status: "active" });
     setEditingClient(null);
     setShowForm(false);
   };
@@ -48,7 +48,8 @@ export function ClientManager() {
       });
       toast.success(editingClient ? "Client mis à jour!" : "Client ajouté!");
       resetForm();
-    } catch {
+    } catch (error) {
+      console.error('Client save error:', error);
       toast.error("Échec de l'enregistrement du client");
     }
   };
@@ -85,7 +86,7 @@ export function ClientManager() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom
+                  Entreprise
                 </label>
                 <input
                   type="text"
@@ -104,7 +105,7 @@ export function ClientManager() {
                   value={formData.contactName}
                   onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Prénom Nom"
+                  placeholder="Prénom"
                   required
                 />
               </div>
@@ -144,7 +145,6 @@ export function ClientManager() {
                 onChange={(e) => setFormData({ ...formData, legalForm: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Sélectionner une forme juridique</option>
                 <option value="SARL">SARL</option>
                 <option value="EURL">EURL</option>
                 <option value="Micro-entrepreneur">Micro-entrepreneur</option>
