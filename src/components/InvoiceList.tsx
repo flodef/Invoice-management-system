@@ -18,6 +18,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
   const [showEmailConfirm, setShowEmailConfirm] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState<string | null>(null);
   const [customMessage, setCustomMessage] = useState<string>('');
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
   const [showPdfViewer, setShowPdfViewer] = useState<string | null>(null);
@@ -34,18 +35,28 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     }
   };
 
-  const handleDuplicate = async (id: string) => {
+  // Show confirmation modal before duplicating
+  const handleDuplicate = (id: string) => {
+    setShowDuplicateConfirm(id);
+  };
+  
+  // Actual duplication after confirmation
+  const confirmDuplicate = async (id: string) => {
     try {
       toast.loading('Duplication de la facture...');
       const newInvoiceId = await duplicateInvoice({ id: id as any });
       toast.dismiss();
       toast.success('Facture dupliquée avec succès!');
+      // Close confirmation modal
+      setShowDuplicateConfirm(null);
       // Redirect to edit the new invoice
       onEditInvoice(newInvoiceId);
     } catch (error) {
       toast.dismiss();
       console.error('Duplicate error:', error);
       toast.error('Échec de la duplication de la facture');
+      // Close confirmation modal
+      setShowDuplicateConfirm(null);
     }
   };
 
@@ -668,6 +679,58 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                     className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                   >
                     Supprimer
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      
+      {/* Duplicate Confirmation Modal */}
+      {showDuplicateConfirm &&
+        (() => {
+          const invoice = invoices.find(inv => inv._id === showDuplicateConfirm);
+          if (!invoice) return null;
+
+          const formatCurrency = (amount: number) => {
+            return new Intl.NumberFormat('fr-FR', {
+              style: 'currency',
+              currency: 'EUR',
+            }).format(amount);
+          };
+
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 className="text-lg font-semibold mb-4 text-orange-600">Dupliquer la facture</h3>
+                <div className="mb-4">
+                  <p className="text-gray-700 mb-4">
+                    Voulez-vous créer une copie de cette facture ? La nouvelle facture sera en statut brouillon.
+                  </p>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-gray-700 mb-1">
+                      <strong>Facture source:</strong> {invoice.invoiceNumber}
+                    </p>
+                    <p className="text-gray-700 mb-1">
+                      <strong>Client:</strong> {invoice.client?.name || 'Client inconnu'}
+                    </p>
+                    <p className="text-gray-700">
+                      <strong>Montant:</strong> {formatCurrency(invoice.totalAmount)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowDuplicateConfirm(null)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => void confirmDuplicate(showDuplicateConfirm)}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+                  >
+                    Dupliquer
                   </button>
                 </div>
               </div>
