@@ -165,12 +165,18 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     // Sort months in descending order (newest first)
     const sortedMonths = Object.keys(groups).sort((a, b) => b.localeCompare(a));
 
-    return sortedMonths.map(monthKey => ({
-      monthKey,
-      monthLabel: formatMonthLabel(monthKey),
-      invoices: groups[monthKey].sort((a, b) => b.invoiceDate - a.invoiceDate), // Sort invoices within month
-      count: groups[monthKey].length,
-    }));
+    return sortedMonths.map(monthKey => {
+      // Calculate total amount for the month
+      const totalAmount = groups[monthKey].reduce((sum, invoice) => sum + invoice.totalAmount, 0);
+      
+      return {
+        monthKey,
+        monthLabel: formatMonthLabel(monthKey),
+        invoices: groups[monthKey].sort((a, b) => b.invoiceDate - a.invoiceDate), // Sort invoices within month
+        count: groups[monthKey].length,
+        totalAmount: totalAmount,
+      };
+    });
   };
 
   const formatMonthLabel = (monthKey: string) => {
@@ -266,7 +272,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
           <p className="text-gray-500 text-center py-8">Aucune facture pour le moment. Créez votre première facture!</p>
         ) : (
           <div className="space-y-4">
-            {groupedInvoices.map(({ monthKey, monthLabel, invoices: monthInvoices, count }) => {
+            {groupedInvoices.map(({ monthKey, monthLabel, invoices: monthInvoices, count, totalAmount }) => {
               const isOpen = openMonths.has(monthKey);
               return (
                 <div key={monthKey} className="border rounded-lg overflow-hidden">
@@ -279,6 +285,9 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                       <span className="font-semibold text-lg text-gray-800">{monthLabel}</span>
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">
                         {count} facture{count > 1 ? 's' : ''}
+                      </span>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium">
+                        {formatCurrency(totalAmount)}
                       </span>
                     </div>
                     <svg
