@@ -1,0 +1,228 @@
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { toast } from "sonner";
+import { Id } from "../../convex/_generated/dataModel";
+
+export function ClientManager() {
+  const clients = useQuery(api.invoices.getClients) || [];
+  const saveClient = useMutation(api.invoices.saveClient);
+  const deleteClient = useMutation(api.invoices.deleteClient);
+
+  const [showForm, setShowForm] = useState(false);
+  const [editingClient, setEditingClient] = useState<Id<"clients"> | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    contactName: "",
+    address: "",
+    email: "",
+    legalForm: "",
+    status: "active",
+  });
+
+  const resetForm = () => {
+    setFormData({ name: "", contactName: "", address: "", email: "", legalForm: "", status: "active" });
+    setEditingClient(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (client: any) => {
+    setFormData({
+      name: client.name,
+      contactName: client.contactName || "",
+      address: client.address,
+      email: client.email,
+      legalForm: client.legalForm || "",
+      status: client.status,
+    });
+    setEditingClient(client._id);
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await saveClient({
+        id: editingClient || undefined,
+        ...formData,
+      });
+      toast.success(editingClient ? "Client mis à jour!" : "Client ajouté!");
+      resetForm();
+    } catch {
+      toast.error("Échec de l'enregistrement du client");
+    }
+  };
+
+  const handleDelete = async (id: Id<"clients">) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce client?")) {
+      try {
+        await deleteClient({ id });
+        toast.success("Client supprimé!");
+      } catch {
+        toast.error("Échec de la suppression du client");
+      }
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Clients</h2>
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Ajouter un client
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+          <h3 className="text-lg font-semibold mb-4">
+            {editingClient ? "Modifier le client" : "Ajouter un nouveau client"}
+          </h3>
+          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom du contact
+                </label>
+                <input
+                  type="text"
+                  value={formData.contactName}
+                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Prénom Nom"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Adresse
+              </label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Forme juridique
+              </label>
+              <select
+                value={formData.legalForm}
+                onChange={(e) => setFormData({ ...formData, legalForm: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Sélectionner une forme juridique</option>
+                <option value="SARL">SARL</option>
+                <option value="EURL">EURL</option>
+                <option value="Micro-entrepreneur">Micro-entrepreneur</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Statut
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="active">Actif</option>
+                <option value="inactive">Inactif</option>
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                {editingClient ? "Mettre à jour" : "Ajouter"} le client
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {clients.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">Aucun client pour le moment. Ajoutez votre premier client!</p>
+        ) : (
+          clients.map((client) => (
+            <div key={client._id} className="border rounded-lg p-4 hover:bg-gray-50">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg">{client.name}</h3>
+                  <p className="text-gray-600">{client.email}</p>
+                  <p className="text-gray-600 text-sm mt-1">{client.address}</p>
+                  {client.legalForm && (
+                    <p className="text-gray-600 text-sm mt-1">Forme juridique: {client.legalForm}</p>
+                  )}
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                    client.status === "active" 
+                      ? "bg-green-100 text-green-800" 
+                      : "bg-gray-100 text-gray-800"
+                  }`}>
+                    {client.status === "active" ? "Actif" : "Inactif"}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(client)}
+                    className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md hover:bg-blue-50"
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    onClick={() => void handleDelete(client._id)}
+                    className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
