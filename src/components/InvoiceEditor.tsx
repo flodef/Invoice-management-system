@@ -48,17 +48,26 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
       return;
     }
 
-    const firstService = services[0];
+    // Find the first service that isn't already used in other items
+    const availableService = services.find(
+      service => !items.some(item => item.serviceId === service._id)
+    );
+
+    if (!availableService) {
+      toast.error("Tous les services ont déjà été ajoutés");
+      return;
+    }
+
     setItems([
       ...items,
       {
-        serviceId: firstService._id,
-        label: firstService.label,
+        serviceId: availableService._id,
+        label: availableService.label,
         quantity: 1,
-        price: firstService.defaultPrice,
+        price: availableService.defaultPrice,
         discount: 0,
         discountUnit: '%',
-        total: firstService.defaultPrice,
+        total: availableService.defaultPrice,
       },
     ]);
   };
@@ -75,7 +84,13 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
       }
     }
 
-    if (field === 'quantity' || field === 'price' || field === 'discount' || field === 'discountUnit') {
+    if (
+      field === 'serviceId' ||
+      field === 'quantity' ||
+      field === 'price' ||
+      field === 'discount' ||
+      field === 'discountUnit'
+    ) {
       const baseTotal = newItems[index].quantity * newItems[index].price;
       const discountValue = newItems[index].discount || 0;
       const discountUnit = newItems[index].discountUnit || '%';
@@ -179,13 +194,16 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Éléments de la facture</h3>
-              <button
-                type="button"
-                onClick={addItem}
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-              >
-                Ajouter un élément
-              </button>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={items.length >= services.length}
+                >
+                  {items.length >= services.length ? 'Tous les services ajoutés' : 'Ajouter un élément'}
+                </button>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -202,11 +220,20 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
                         disabled={isReadOnly}
                       >
-                        {services.map(service => (
-                          <option key={service._id} value={service._id}>
-                            {service.label}
-                          </option>
-                        ))}
+                        {services
+                          .filter(
+                            service =>
+                              service._id === item.serviceId ||
+                              !items.some(
+                                (otherItem, otherIndex) =>
+                                  otherIndex !== index && otherItem.serviceId === service._id
+                              )
+                          )
+                          .map(service => (
+                            <option key={service._id} value={service._id}>
+                              {service.label}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
