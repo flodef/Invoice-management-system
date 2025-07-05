@@ -6,9 +6,9 @@ import { ClientManager } from "./ClientManager";
 import { ServiceManager } from "./ServiceManager";
 import { InvoiceList } from "./InvoiceList";
 import { InvoiceEditor } from "./InvoiceEditor";
-import { MonthlyTemplates } from "./MonthlyTemplates";
 
-type Tab = "invoices" | "templates" | "clients" | "services" | "profile";
+
+type Tab = "invoices" | "clients" | "services" | "profile";
 
 export function InvoiceManager() {
   const [activeTab, setActiveTab] = useState<Tab>("invoices");
@@ -18,7 +18,6 @@ export function InvoiceManager() {
 
   const tabs = [
     { id: "invoices" as const, label: "Factures", icon: "📄" },
-    { id: "templates" as const, label: "Modèles mensuels", icon: "📋" },
     { id: "clients" as const, label: "Clients", icon: "👥" },
     { id: "services" as const, label: "Services", icon: "🛠️" },
     { id: "profile" as const, label: "Profil", icon: "⚙️" },
@@ -75,7 +74,6 @@ export function InvoiceManager() {
         {activeTab === "invoices" && (
           <InvoiceList onEditInvoice={setEditingInvoiceId} />
         )}
-        {activeTab === "templates" && <MonthlyTemplates />}
         {activeTab === "clients" && <ClientManager />}
         {activeTab === "services" && <ServiceManager />}
         {activeTab === "profile" && <ProfileSettings />}

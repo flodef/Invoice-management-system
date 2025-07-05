@@ -9,6 +9,7 @@ interface InvoiceListProps {
 
 export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const invoices = useQuery(api.invoices.getInvoices) || [];
+  const clients = useQuery(api.invoices.getClients) || [];
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
   const duplicateInvoice = useMutation(api.invoices.duplicateInvoice);
   const generatePDF = useAction(api.pdf.generateInvoicePDF);
@@ -102,31 +103,51 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     }
   };
 
-  const handleDownloadPDF = () => {
-    if (!pdfUrl || !showPdfViewer) return;
+  const handleDownloadPDF = async (id: string) => {
+    try {
+      toast.loading('Génération du PDF...');
+      const result = await generatePDF({ invoiceId: id as any });
+      toast.dismiss();
 
-    // Find the invoice to get the invoice number and client name
-    const invoice = invoices.find(inv => inv._id === showPdfViewer);
-    let filename = `Facture-${showPdfViewer}.pdf`;
+      if (result?.storageId) {
+        const storageUrl = await getStorageUrl({ storageId: result.storageId });
 
-    if (invoice) {
-      // Sanitize client name to make it filename-safe
-      const sanitizedClientName = invoice.clientName
-        .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters
-        .replace(/\s+/g, '-'); // Replace spaces with hyphens
+        if (storageUrl) {
+          const response = await fetch(storageUrl);
+          const blob = await response.blob();
 
-      // Format: Facture-YYYYMMXX-COMPANY_NAME.pdf
-      filename = `Facture-${invoice.invoiceNumber}-${sanitizedClientName}.pdf`;
+          // Get invoice details for better filename
+          const invoiceDetails = invoices.find(inv => inv._id === id);
+          const invoiceNumber = invoiceDetails?.invoiceNumber || id;
+          let clientName = '';
+
+          if (invoiceDetails?.client?._id) {
+            const client = clients?.find(c => c._id === invoiceDetails.client?._id);
+            clientName = client?.name || '';
+          }
+
+          // Sanitize client name for filename (remove spaces, special chars)
+          const sanitizedClientName = clientName.replace(/[^a-zA-Z0-9]/g, '-');
+
+          // Create filename with invoice number and client name
+          const filename = `Facture-${invoiceNumber}-${sanitizedClientName}.pdf`;
+
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(downloadUrl);
+
+          toast.success('PDF téléchargé avec succès!');
+        }
+      }
+    } catch (error) {
+      toast.error('Échec de la génération du PDF');
+      console.error('Error downloading PDF:', error);
     }
-
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast.success('PDF téléchargé avec succès!');
   };
 
   const handleClosePdfViewer = () => {
@@ -135,6 +156,34 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       setPdfUrl(null);
     }
     setShowPdfViewer(null);
+  };
+
+  // Duplicate all invoices from the previous month to the current month
+  const handleDuplicatePreviousMonth = async () => {
+    try {
+      toast.loading('Duplication des factures du mois précédent...');
+
+      // Get the previous month's invoices
+      const previousMonthKey = getPreviousMonthKey();
+      const previousMonthInvoices = invoices.filter(invoice => {
+        const date = new Date(invoice.invoiceDate);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        return monthKey === previousMonthKey;
+      });
+
+      // Create a duplicate for each invoice
+      const duplicatePromises = previousMonthInvoices.map(invoice => duplicateInvoice({ id: invoice._id as any }));
+
+      await Promise.all(duplicatePromises);
+      toast.dismiss();
+      toast.success(
+        `${previousMonthInvoices.length} facture${previousMonthInvoices.length > 1 ? 's' : ''} dupliquée${previousMonthInvoices.length > 1 ? 's' : ''} avec succès!`,
+      );
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Échec de la duplication des factures');
+      console.error('Error duplicating invoices:', error);
+    }
   };
 
   const formatDate = (timestamp: number) => {
@@ -168,7 +217,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     return sortedMonths.map(monthKey => {
       // Calculate total amount for the month
       const totalAmount = groups[monthKey].reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-      
+
       return {
         monthKey,
         monthLabel: formatMonthLabel(monthKey),
@@ -189,6 +238,34 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   };
+
+  const getPreviousMonthKey = () => {
+    const now = new Date();
+    // Go back one month
+    now.setMonth(now.getMonth() - 1);
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  const hasInvoicesInCurrentMonth = () => {
+    const currentMonthKey = getCurrentMonthKey();
+    return invoices.some(invoice => {
+      const date = new Date(invoice.invoiceDate);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      return monthKey === currentMonthKey;
+    });
+  };
+
+  const hasPreviousMonthInvoices = () => {
+    const previousMonthKey = getPreviousMonthKey();
+    return invoices.some(invoice => {
+      const date = new Date(invoice.invoiceDate);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      return monthKey === previousMonthKey;
+    });
+  };
+
+  // Determine if we should show the duplicate button
+  const shouldShowDuplicateButton = !hasInvoicesInCurrentMonth() && hasPreviousMonthInvoices();
 
   const toggleMonth = (monthKey: string) => {
     console.log(monthKey);
@@ -259,12 +336,38 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Factures</h2>
-        <button
-          onClick={() => onEditInvoice('new')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Créer une facture
-        </button>
+        <div className="flex gap-2">
+          {shouldShowDuplicateButton && (
+            <button
+              onClick={() => void handleDuplicatePreviousMonth()}
+              className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors flex items-center gap-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="icon icon-tabler icon-tabler-copy"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
+              </svg>
+              Dupliquer le mois précédent
+            </button>
+          )}
+          <button
+            onClick={() => onEditInvoice('new')}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Créer une facture
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -384,7 +487,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                   // Check if the current invoice is a draft (status !== 'sent')
                   const currentInvoice = invoices.find(inv => inv._id === showPdfViewer);
                   const isDraft = currentInvoice?.status !== 'sent';
-                  
+
                   return (
                     <>
                       {isDraft && (
@@ -410,7 +513,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                         </button>
                       )}
                       <button
-                        onClick={handleDownloadPDF}
+                        onClick={() => void handleDownloadPDF(showPdfViewer)}
                         className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
                       >
                         <svg
