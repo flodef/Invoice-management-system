@@ -16,6 +16,7 @@ interface InvoiceItem {
   price: number;
   discount?: number; // discount value
   discountUnit?: string; // "%" or "€"
+  discountText?: string; // description of the discount
   total: number;
 }
 
@@ -30,6 +31,9 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
 
   const [selectedClientId, setSelectedClientId] = useState<Id<'clients'> | ''>('');
   const [items, setItems] = useState<InvoiceItem[]>([]);
+
+  // Check if invoice is read-only (status is "sent")
+  const isReadOnly = !isNew && invoice?.status === 'sent';
 
   useEffect(() => {
     if (!isNew && invoice) {
@@ -187,13 +191,16 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-                    <div>
+                  {/* First row - Flexible layout with fixed width elements */}
+                  <div className="flex flex-wrap gap-2 items-end mb-2">
+                    {/* Service field - takes most space */}
+                    <div className="flex-1 min-w-[200px]">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
                       <select
-                        value={item.serviceId}
-                        onChange={e => updateItem(index, 'serviceId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={item.serviceId || ''}
+                        onChange={e => updateItem(index, 'serviceId', e.target.value as Id<'services'>)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                        disabled={isReadOnly}
                       >
                         {services.map(service => (
                           <option key={service._id} value={service._id}>
@@ -202,60 +209,95 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Quantité</label>
+
+                    {/* Quantity - fixed small width */}
+                    <div className="w-14">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Qté</label>
                       <input
                         type="number"
                         min="1"
+                        max="9"
+                        step="1"
                         value={item.quantity}
-                        onChange={e => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                        disabled={isReadOnly}
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Prix unitaire HT</label>
-                      <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
-                        {formatCurrency(item.price)}
-                      </div>
+
+                    {/* Price - fixed width for currency amount */}
+                    <div className="w-20">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Prix HT</label>
+                      <div className="px-3 py-2">{formatCurrency(item.price)}</div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Valeur de remise</label>
+
+                    {/* Discount value - fixed small width */}
+                    <div className="w-20">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Remise</label>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
+                        max="99.99"
                         value={item.discount || 0}
                         onChange={e => updateItem(index, 'discount', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                        disabled={isReadOnly}
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Unité de remise</label>
-                      <select
-                        value={item.discountUnit || '%'}
-                        onChange={e => updateItem(index, 'discountUnit', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="%">%</option>
-                        <option value="€">€</option>
-                      </select>
-                    </div>
-                    <div>
+
+                    {/* Discount unit - fixed small width, only shows when discount > 0 */}
+                    {(item.discount || 0) > 0 && (
+                      <div className="w-16">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Unité</label>
+                        <select
+                          value={item.discountUnit || '%'}
+                          onChange={e => updateItem(index, 'discountUnit', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                          disabled={isReadOnly}
+                        >
+                          <option value="%">%</option>
+                          <option value="€">€</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Total - fixed width for currency amount */}
+                    <div className="w-20">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Total HT</label>
-                      <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
-                        {formatCurrency(item.total)}
+                      <div className="px-3 py-2">{formatCurrency(item.total)}</div>
+                    </div>
+
+                    {/* Delete button - fixed small width */}
+                    {!isReadOnly && (
+                      <div className="w-10">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="w-full bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 transition-colors"
+                        >
+                          X
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Second row - Discount description - only shows when discount > 0 */}
+                  {(item.discount || 0) > 0 && (
+                    <div className="mt-2 flex">
+                      <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description remise</label>
+                        <input
+                          type="text"
+                          value={item.discountText || ''}
+                          onChange={e => updateItem(index, 'discountText', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ex: Remise commerciale"
+                          disabled={isReadOnly}
+                        />
                       </div>
                     </div>
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="w-full bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 transition-colors"
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
