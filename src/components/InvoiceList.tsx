@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface InvoiceListProps {
   onEditInvoice: (id: string) => void;
@@ -19,6 +19,9 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [customMessage, setCustomMessage] = useState<string>('');
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
+  const [showPdfViewer, setShowPdfViewer] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const initializedRef = useRef(false);
 
   const handleDelete = async (id: string) => {
     try {
@@ -121,25 +124,25 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   // Group invoices by month
   const groupInvoicesByMonth = () => {
     const groups: { [key: string]: typeof invoices } = {};
-    
+
     invoices.forEach(invoice => {
       const date = new Date(invoice.invoiceDate);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
+
       if (!groups[monthKey]) {
         groups[monthKey] = [];
       }
       groups[monthKey].push(invoice);
     });
-    
+
     // Sort months in descending order (newest first)
     const sortedMonths = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-    
+
     return sortedMonths.map(monthKey => ({
       monthKey,
       monthLabel: formatMonthLabel(monthKey),
       invoices: groups[monthKey].sort((a, b) => b.invoiceDate - a.invoiceDate), // Sort invoices within month
-      count: groups[monthKey].length
+      count: groups[monthKey].length,
     }));
   };
 
@@ -155,6 +158,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   };
 
   const toggleMonth = (monthKey: string) => {
+    console.log(monthKey);
     setOpenMonths(prev => {
       const newSet = new Set(prev);
       if (newSet.has(monthKey)) {
@@ -166,17 +170,31 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     });
   };
 
-  // Initialize current month as open
-  const currentMonthKey = getCurrentMonthKey();
-  if (!openMonths.has(currentMonthKey) && invoices.some(inv => {
-    const date = new Date(inv.invoiceDate);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    return monthKey === currentMonthKey;
-  })) {
-    setOpenMonths(prev => new Set([...prev, currentMonthKey]));
-  }
-
   const groupedInvoices = groupInvoicesByMonth();
+  
+  // Initialize current month as open when invoices load or change
+  useEffect(() => {
+    if (invoices.length > 0 && !initializedRef.current) {
+      const currentMonthKey = getCurrentMonthKey();
+      const hasCurrentMonthInvoices = invoices.some(inv => {
+        const date = new Date(inv.invoiceDate);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        return monthKey === currentMonthKey;
+      });
+      
+      if (hasCurrentMonthInvoices) {
+        initializedRef.current = true;
+        setOpenMonths(prev => new Set([...prev, currentMonthKey]));
+      } else {
+        // If no invoices in current month, open the first month (newest)
+        if (groupedInvoices.length > 0) {
+          initializedRef.current = true;
+          setOpenMonths(prev => new Set([...prev, groupedInvoices[0].monthKey]));
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoices]); // Run when invoices change
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -245,7 +263,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  
+
                   {/* Month Content */}
                   {isOpen && (
                     <div className="divide-y divide-gray-200">
@@ -257,7 +275,9 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                               <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
                                   <h3 className="font-semibold text-lg">#{invoice.invoiceNumber}</h3>
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}
+                                  >
                                     {getStatusLabel(invoice.status)}
                                   </span>
                                 </div>
