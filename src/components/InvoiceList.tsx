@@ -586,16 +586,17 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                   <p className="text-gray-700 mb-2">
                     <strong>Facture:</strong> {invoice.invoiceNumber}
                   </p>
-                  <p className="text-gray-700 mb-4">
+                  <p className="text-gray-700 mb-2">
                     <strong>Montant total:</strong> {formatCurrency(invoice.totalAmount)}
+                  </p>
+                  <p className="text-gray-700 mb-2">
+                    <strong>Contact:</strong> {invoice.client?.contactName}
                   </p>
                 </div>
 
                 {/* Custom Message Field */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Message personnalisé (optionnel)
-                  </label>
+                <div className="mb-2">
+                  <label className="text-gray-700 mb-2 text-sm font-medium">Message personnalisé (optionnel)</label>
                   <textarea
                     value={customMessage}
                     onChange={e => setCustomMessage(e.target.value)}
