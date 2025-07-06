@@ -7,6 +7,28 @@ import { action } from './_generated/server';
 
 const MAX_PAGE_WIDTH = 170;
 
+// Function to split long lines at spaces or hyphens
+const splitLongText = (text: string, maxLength: number = 45): string[] => {
+  if (text.length <= maxLength) return [text];
+
+  // Find the last space or hyphen within the maxLength
+  let splitIndex = maxLength;
+  while (splitIndex > 0 && text[splitIndex] !== ' ' && text[splitIndex] !== '-') {
+    splitIndex--;
+  }
+
+  // If no space or hyphen found, force split at maxLength
+  if (splitIndex === 0) splitIndex = maxLength;
+
+  // If split at hyphen, include the hyphen in the first part
+  const splitPoint = text[splitIndex] === '-' ? splitIndex + 1 : splitIndex;
+
+  const firstPart = text.substring(0, splitPoint);
+  const remainingText = text.substring(text[splitIndex] === ' ' ? splitIndex + 1 : splitPoint);
+
+  return [firstPart, ...splitLongText(remainingText, maxLength)];
+};
+
 export const getStorageUrl = action({
   args: {
     storageId: v.id('_storage'),
@@ -74,8 +96,11 @@ function createInvoicePDF(invoice: any): Uint8Array {
   const companyAddress = invoice.userProfile.address.split('\n');
   let yPos = 45;
   companyAddress.forEach((line: string) => {
-    doc.text(line, 20, yPos);
-    yPos += 5;
+    const lineParts = splitLongText(line);
+    lineParts.forEach((part: string) => {
+      doc.text(part, 20, yPos);
+      yPos += 5;
+    });
   });
 
   doc.text(`N° SIRET: ${invoice.userProfile.freelanceId}`, 20, yPos + 5);
@@ -90,11 +115,16 @@ function createInvoicePDF(invoice: any): Uint8Array {
   doc.text(invoice.client?.name || 'Client inconnu', 120, 40);
 
   doc.setFont('helvetica', 'normal');
+
+  // Process client address with line splitting
   const clientAddress = (invoice.client?.address || 'Adresse inconnue').split('\n');
   yPos = 45;
   clientAddress.forEach((line: string) => {
-    doc.text(line, 120, yPos);
-    yPos += 5;
+    const lineParts = splitLongText(line);
+    lineParts.forEach((part: string) => {
+      doc.text(part, 120, yPos);
+      yPos += 5;
+    });
   });
 
   if (invoice.client?.legalForm) {
