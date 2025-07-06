@@ -128,41 +128,43 @@ export function ServiceManager() {
         {services.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Aucun service pour le moment. Ajoutez votre premier service!</p>
         ) : (
-          services.map(service => (
-            <div key={service._id} className="border rounded-lg p-4 hover:bg-gray-50">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{service.label}</h3>
-                  <p className="text-gray-600">
-                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
-                      service.defaultPrice,
+          services
+            .sort((a, b) => a.label.localeCompare(b.label))
+            .map(service => (
+              <div key={service._id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{service.label}</h3>
+                    <p className="text-gray-600">
+                      {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
+                        service.defaultPrice,
+                      )}
+                    </p>
+                    {service.isGlobal && (
+                      <span className="inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 bg-blue-100 text-blue-800">
+                        Service Global
+                      </span>
                     )}
-                  </p>
-                  {service.isGlobal && (
-                    <span className="inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 bg-blue-100 text-blue-800">
-                      Service Global
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(service)}
-                    className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
-                    title="Modifier"
-                  >
-                    <IconEdit size={20} stroke={1.5} />
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(service._id)}
-                    className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
-                    title="Supprimer"
-                  >
-                    <IconTrash size={20} stroke={1.5} />
-                  </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(service)}
+                      className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
+                      title="Modifier"
+                    >
+                      <IconEdit size={20} stroke={1.5} />
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(service._id)}
+                      className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
+                      title="Supprimer"
+                    >
+                      <IconTrash size={20} stroke={1.5} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))
         )}
       </div>
 

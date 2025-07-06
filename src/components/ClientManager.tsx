@@ -177,40 +177,42 @@ export function ClientManager() {
         {clients.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Aucun client pour le moment. Ajoutez votre premier client!</p>
         ) : (
-          clients.map(client => (
-            <div key={client._id} className="border rounded-lg p-4 hover:bg-gray-50">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{client.name}</h3>
-                  <p className="text-gray-600">{client.email}</p>
-                  <p className="text-gray-600 text-sm mt-1">{client.address}</p>
-                  <span
-                    className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
-                      client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {client.status === 'active' ? 'Actif' : 'Inactif'}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(client)}
-                    className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
-                    title="Modifier"
-                  >
-                    <IconEdit size={20} stroke={1.5} />
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(client._id)}
-                    className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
-                    title="Supprimer"
-                  >
-                    <IconTrash size={20} stroke={1.5} />
-                  </button>
+          clients
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(client => (
+              <div key={client._id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{client.name}</h3>
+                    <p className="text-gray-600">{client.email}</p>
+                    <p className="text-gray-600 text-sm mt-1">{client.address}</p>
+                    <span
+                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                        client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {client.status === 'active' ? 'Actif' : 'Inactif'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(client)}
+                      className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
+                      title="Modifier"
+                    >
+                      <IconEdit size={20} stroke={1.5} />
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(client._id)}
+                      className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
+                      title="Supprimer"
+                    >
+                      <IconTrash size={20} stroke={1.5} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))
         )}
       </div>
 
