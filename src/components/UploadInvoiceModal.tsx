@@ -1,4 +1,4 @@
-import { IconFile, IconFileText, IconUpload, IconX } from '@tabler/icons-react';
+import { IconUpload, IconX } from '@tabler/icons-react';
 import { useAction, useQuery } from 'convex/react';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ const fuzzyMatch = (term: string, clients: Doc<'clients'>[]) => {
 export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoiceModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [invoiceDate, setInvoiceDate] = useState<string>('');
@@ -50,6 +51,18 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
 
   // Upload invoice action
   const storeUploadedInvoice = useAction(api.uploadInvoice.storeUploadedInvoice);
+
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setFileUrl(url);
+
+      return () => {
+        URL.revokeObjectURL(url);
+        setFileUrl(null);
+      };
+    }
+  }, [file]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -173,16 +186,6 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
 
   if (!isOpen) return null;
 
-  const getFileIcon = () => {
-    if (!file) return null;
-
-    return file.type === 'application/pdf' ? (
-      <IconFile size={48} className="text-red-500" />
-    ) : (
-      <IconFileText size={48} className="text-blue-500" />
-    );
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -194,105 +197,102 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
         </div>
 
         <form onSubmit={e => void handleSubmit(e)} className="p-6 space-y-6">
-          {/* File upload area */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer ${
-              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-            } ${file ? 'bg-gray-50' : ''}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept="application/pdf,image/*"
-              onChange={handleFileInputChange}
-              disabled={isSubmitting}
-            />
-
-            {file ? (
-              <div className="flex flex-col items-center">
-                {getFileIcon()}
-                <p className="mt-2 text-sm text-gray-600">{file.name}</p>
-                <p className="text-xs text-gray-500">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                <button
-                  type="button"
-                  className="mt-2 text-sm text-red-600 hover:text-red-800"
-                  onClick={e => {
-                    e.stopPropagation();
-                    setFile(null);
-                    setSelectedClientId('');
-                    setInvoiceDate('');
-                    setInvoiceNumber('');
-                    setItems([]);
-                  }}
-                  disabled={isSubmitting}
-                >
-                  Supprimer
-                </button>
-              </div>
-            ) : (
-              <>
-                <IconUpload size={48} className="text-gray-400" />
-                <p className="mt-2 text-lg font-medium text-gray-900">
-                  Déposer un fichier ici ou cliquer pour sélectionner
-                </p>
-                <p className="mt-1 text-sm text-gray-500">PDF uniquement (jusqu'à 1MB)</p>
-              </>
-            )}
-          </div>
+          {file && fileUrl ? (
+            <div>
+              <embed src={fileUrl} type="application/pdf" width="100%" height="500px" />
+              <button
+                type="button"
+                className="mt-2 text-sm text-red-600 hover:text-red-800"
+                onClick={() => {
+                  setFile(null);
+                  setSelectedClientId('');
+                  setInvoiceDate('');
+                  setInvoiceNumber('');
+                  setItems([]);
+                }}
+                disabled={isSubmitting}
+              >
+                Supprimer
+              </button>
+            </div>
+          ) : (
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer ${
+                isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="application/pdf"
+                onChange={handleFileInputChange}
+                disabled={isSubmitting}
+              />
+              <IconUpload size={48} className="text-gray-400" />
+              <p className="mt-2 text-lg font-medium text-gray-900">
+                Déposer un fichier ici ou cliquer pour sélectionner
+              </p>
+              <p className="mt-1 text-sm text-gray-500">PDF uniquement (jusqu'à 1MB)</p>
+            </div>
+          )}
 
           {file && (
             <>
-              {/* Client selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                <select
-                  className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
-                  value={selectedClientId}
-                  onChange={e => setSelectedClientId(e.target.value)}
-                  required
-                  disabled
-                >
-                  <option value="">Sélectionner un client</option>
-                  {clients
-                    .sort((a: Doc<'clients'>, b: Doc<'clients'>) => a.name.localeCompare(b.name))
-                    .map((client: Doc<'clients'>) => (
-                      <option key={client._id} value={client._id}>
-                        {client.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
+              <div className="flex flex-wrap items-end gap-4">
+                {/* Client selection */}
+                <div className="flex-1 min-w-32">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
+                    value={clients.find(client => client._id === selectedClientId)?.name}
+                    required
+                    readOnly
+                  />
+                </div>
 
-              {/* Invoice date and number */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date de facture</label>
-                  <div className="relative">
+                {/* Invoice number */}
+                <div className="flex flex-col w-24">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">N° de facture</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
+                    value={invoiceNumber}
+                    required
+                    readOnly
+                  />
+                </div>
+
+                {/* Invoice and Payment Dates */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date de facture → Échéance</label>
+                  <div className="flex items-center">
                     <input
                       type="date"
-                      className="w-full rounded-md border border-gray-300 bg-white h-10 p-2"
+                      className="w-full max-w-32 rounded-md border border-gray-300 bg-white h-10 p-2"
                       value={invoiceDate}
                       onChange={e => setInvoiceDate(e.target.value)}
                       required
                       disabled={isSubmitting}
                     />
+                    <span className="mx-2">→</span>
+                    <input
+                      type="date"
+                      className="w-full max-w-32 rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
+                      value={(() => {
+                        if (!invoiceDate) return '';
+                        const date = new Date(invoiceDate);
+                        date.setUTCMonth(date.getUTCMonth() + 1);
+                        return date.toISOString().split('T')[0];
+                      })()}
+                      readOnly
+                    />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Numéro de facture</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
-                    value={invoiceNumber}
-                    onChange={e => setInvoiceNumber(e.target.value)}
-                    required
-                    readOnly
-                  />
                 </div>
               </div>
 

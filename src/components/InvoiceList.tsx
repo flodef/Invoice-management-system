@@ -426,22 +426,25 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                         const isDraft = invoice.status === 'draft';
                         return (
                           <div key={invoice._id} className="p-4 hover:bg-gray-50">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <h3 className="font-semibold text-lg">#{invoice.invoiceNumber}</h3>
-                                  <span
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}
-                                  >
-                                    {getStatusLabel(invoice.status)}
-                                  </span>
+                            <div className="flex flex-wrap justify-between items-center">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                  <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
+                                  <p className="text-gray-600">#{invoice.invoiceNumber}</p>
+                                  <p className="text-gray-500 text-sm">
+                                    {formatDate(invoice.invoiceDate)} → {formatDate(invoice.paymentDate)}
+                                  </p>
                                 </div>
-                                <p className="text-gray-600">Client: {invoice.clientName}</p>
-                                <p className="text-gray-600">Date: {formatDate(invoice.invoiceDate)}</p>
-                                <p className="text-gray-600">Échéance: {formatDate(invoice.paymentDate)}</p>
-                                <p className="font-semibold text-lg mt-2">{formatCurrency(invoice.totalAmount)}</p>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}
+                                >
+                                  {getStatusLabel(invoice.status)}
+                                </span>
+                                <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
+                              </div>
+                              <div className="flex gap-2 ml-4">
                                 {isDraft && (
                                   <button
                                     onClick={() => onEditInvoice(invoice._id)}
@@ -735,12 +738,12 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
             </div>
           );
         })()}
-      
+
       {/* Upload Invoice Modal */}
-      <UploadInvoiceModal 
+      <UploadInvoiceModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={(invoiceId) => {
+        onSuccess={invoiceId => {
           // Refresh will happen automatically via Convex
           onEditInvoice(invoiceId);
         }}
