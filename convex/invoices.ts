@@ -419,6 +419,14 @@ export const deleteInvoice = mutation({
       throw new Error('Invoice not found');
     }
 
+    // Delete associated PDF files from storage if they exist
+    if (invoice.pdfStorageId) {
+      await ctx.storage.delete(invoice.pdfStorageId);
+    }
+    if (invoice.uploadedInvoiceId) {
+      await ctx.storage.delete(invoice.uploadedInvoiceId);
+    }
+
     await ctx.db.delete(args.id);
   },
 });
