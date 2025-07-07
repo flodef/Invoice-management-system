@@ -13,12 +13,33 @@ interface UploadInvoiceModalProps {
   onSuccess: (invoiceId: string) => void;
 }
 
+// Simple fuzzy matching function
+const fuzzyMatch = (term: string, clients: Doc<'clients'>[]) => {
+  const lowerTerm = term.toLowerCase().replace(/[-_]/g, ' ');
+  let bestMatch = null;
+  let maxScore = 0;
+
+  for (const client of clients) {
+    const clientName = client.name.toLowerCase();
+    const score = lowerTerm.split(' ').reduce((acc, word) => {
+      return acc + (clientName.includes(word) ? word.length : 0);
+    }, 0);
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestMatch = client;
+    }
+  }
+
+  return bestMatch;
+};
+
 export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoiceModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [invoiceDate, setInvoiceDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [invoiceDate, setInvoiceDate] = useState<string>('');
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,21 +48,8 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
   // Get clients and services
   const clients = useQuery(api.invoices.getClients) || [];
 
-  // Generate invoice number based on date
-  const generateInvoiceNumber = useQuery(
-    api.uploadInvoice.generateInvoiceNumber,
-    invoiceDate ? { invoiceDate: new Date(invoiceDate).getTime() } : 'skip',
-  );
-
   // Upload invoice action
   const storeUploadedInvoice = useAction(api.uploadInvoice.storeUploadedInvoice);
-
-  // Initialize invoice number when date changes
-  useEffect(() => {
-    if (generateInvoiceNumber) {
-      setInvoiceNumber(generateInvoiceNumber);
-    }
-  }, [generateInvoiceNumber]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -76,6 +84,33 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
       return;
     }
 
+    // Parse filename
+    const filename = selectedFile.name.replace(/\.pdf$/, '');
+    const match = filename.match(/^Facture-(\d{8})-(.+)$/);
+
+    if (!match) {
+      toast.error('Nom de fichier invalide. Le format doit être: Facture-YYYYMMDD-Client_Name.pdf');
+      return;
+    }
+
+    const [, invoiceNum, clientName] = match;
+
+    // Find client by fuzzy matching
+    const matchedClient = fuzzyMatch(clientName, clients);
+    if (!matchedClient) {
+      toast.error(`Client non trouvé pour: ${clientName}`);
+      return;
+    }
+
+    const year = parseInt(invoiceNum.substring(0, 4), 10);
+    const month = parseInt(invoiceNum.substring(4, 6), 10);
+
+    // Set invoice date to the 1st of the month, using UTC to avoid timezone issues
+    const date = new Date(Date.UTC(year, month - 1, 1));
+    setInvoiceDate(date.toISOString().split('T')[0]);
+
+    setInvoiceNumber(invoiceNum);
+    setSelectedClientId(matchedClient._id);
     setFile(selectedFile);
   };
 
@@ -189,6 +224,10 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
                   onClick={e => {
                     e.stopPropagation();
                     setFile(null);
+                    setSelectedClientId('');
+                    setInvoiceDate('');
+                    setInvoiceNumber('');
+                    setItems([]);
                   }}
                   disabled={isSubmitting}
                 >
@@ -206,63 +245,66 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
             )}
           </div>
 
-          {/* Client selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-            <select
-              className="w-full rounded-md border border-gray-300 bg-white h-10 p-2"
-              value={selectedClientId}
-              onChange={e => setSelectedClientId(e.target.value)}
-              required
-              disabled={isSubmitting}
-            >
-              <option value="">Sélectionner un client</option>
-              {clients
-                .sort((a: Doc<'clients'>, b: Doc<'clients'>) => a.name.localeCompare(b.name))
-                .map((client: Doc<'clients'>) => (
-                  <option key={client._id} value={client._id}>
-                    {client.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          {/* Invoice date and number */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de facture</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  className="w-full rounded-md border border-gray-300 bg-white h-10 p-2"
-                  value={invoiceDate}
-                  onChange={e => setInvoiceDate(e.target.value)}
+          {file && (
+            <>
+              {/* Client selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                <select
+                  className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
+                  value={selectedClientId}
+                  onChange={e => setSelectedClientId(e.target.value)}
                   required
-                  disabled={isSubmitting}
-                />
+                  disabled
+                >
+                  <option value="">Sélectionner un client</option>
+                  {clients
+                    .sort((a: Doc<'clients'>, b: Doc<'clients'>) => a.name.localeCompare(b.name))
+                    .map((client: Doc<'clients'>) => (
+                      <option key={client._id} value={client._id}>
+                        {client.name}
+                      </option>
+                    ))}
+                </select>
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Numéro de facture</label>
-              <input
-                type="text"
-                className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
-                value={invoiceNumber}
-                onChange={e => setInvoiceNumber(e.target.value)}
-                required
-                readOnly
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
 
-          <InvoiceItemsManager items={items} setItems={setItems} isReadOnly={isSubmitting} />
+              {/* Invoice date and number */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date de facture</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      className="w-full rounded-md border border-gray-300 bg-white h-10 p-2"
+                      value={invoiceDate}
+                      onChange={e => setInvoiceDate(e.target.value)}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Numéro de facture</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
+                    value={invoiceNumber}
+                    onChange={e => setInvoiceNumber(e.target.value)}
+                    required
+                    readOnly
+                  />
+                </div>
+              </div>
 
-          {/* Total amount */}
-          <div className="flex justify-end items-center">
-            <span className="text-lg font-medium mr-4">Total:</span>
-            <span className="text-xl font-bold">{formatCurrency(totalAmount)}</span>
-          </div>
+              <InvoiceItemsManager items={items} setItems={setItems} isReadOnly={isSubmitting} />
+
+              {/* Total amount */}
+              <div className="flex justify-end items-center">
+                <span className="text-lg font-medium mr-4">Total:</span>
+                <span className="text-xl font-bold">{formatCurrency(totalAmount)}</span>
+              </div>
+            </>
+          )}
 
           {/* Action buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t">

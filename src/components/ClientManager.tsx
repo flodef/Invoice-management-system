@@ -39,6 +39,7 @@ export function ClientManager() {
     });
     setEditingClient(client._id);
     setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -178,9 +179,18 @@ export function ClientManager() {
           <p className="text-gray-500 text-center py-8">Aucun client pour le moment. Ajoutez votre premier client!</p>
         ) : (
           clients
-            .sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => {
+              if (a.status === 'active' && b.status !== 'active') return -1;
+              if (a.status !== 'active' && b.status === 'active') return 1;
+              return a.name.localeCompare(b.name);
+            })
             .map(client => (
-              <div key={client._id} className="border rounded-lg p-4 hover:bg-gray-50">
+              <div
+                key={client._id}
+                className={`border rounded-lg p-4 hover:bg-gray-50 ${
+                  client.status !== 'active' ? 'bg-gray-100' : ''
+                }`}
+              >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{client.name}</h3>

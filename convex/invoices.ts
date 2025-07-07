@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import { api } from './_generated/api';
 import { Id } from './_generated/dataModel';
 import { mutation, query } from './_generated/server';
+import { calculatePaymentDate } from './utils';
 
 // Get user profile
 export const getUserProfile = query({
@@ -297,10 +298,10 @@ export const createInvoice = mutation({
     if (!userId) throw new Error('Not authenticated');
 
     // Use provided values or generate defaults
-    const invoiceNumber: string = args.invoiceNumber || await ctx.runQuery(api.invoices.generateInvoiceNumber);
+    const invoiceNumber: string = args.invoiceNumber || (await ctx.runQuery(api.invoices.generateInvoiceNumber));
     const now = Date.now();
     const invoiceDate = args.invoiceDate || now;
-    const paymentDate = args.paymentDate || (invoiceDate + 30 * 24 * 60 * 60 * 1000); // 30 days from invoice date
+    const paymentDate = args.paymentDate || calculatePaymentDate(invoiceDate);
     const totalAmount = args.totalAmount || args.items.reduce((sum, item) => sum + item.total, 0);
     const status = args.status || 'draft';
 
@@ -315,12 +316,12 @@ export const createInvoice = mutation({
       totalAmount,
       items: args.items,
     };
-    
+
     // Add uploadedInvoiceId if provided
     if (args.uploadedInvoiceId) {
       invoiceData.uploadedInvoiceId = args.uploadedInvoiceId;
     }
-    
+
     const invoiceId: Id<'invoices'> = await ctx.db.insert('invoices', invoiceData);
 
     return invoiceId;
@@ -457,6 +458,7 @@ export const duplicateInvoice = mutation({
 
     // Create duplicate with new data
     const currentDate = Date.now();
+    const paymentDate = calculatePaymentDate(currentDate);
     const duplicateData = {
       userId,
       invoiceNumber,
@@ -465,7 +467,7 @@ export const duplicateInvoice = mutation({
       totalAmount: originalInvoice.totalAmount,
       status: 'draft' as const,
       invoiceDate: currentDate,
-      paymentDate: currentDate + 30 * 24 * 60 * 60 * 1000, // 30 days from now
+      paymentDate,
     };
 
     return await ctx.db.insert('invoices', duplicateData);
