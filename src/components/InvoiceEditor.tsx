@@ -49,12 +49,10 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
     }
 
     // Find the first service that isn't already used in other items
-    const availableService = services.find(
-      service => !items.some(item => item.serviceId === service._id)
-    );
+    const availableService = services.find(service => !items.some(item => item.serviceId === service._id));
 
     if (!availableService) {
-      toast.error("Tous les services ont déjà été ajoutés");
+      toast.error('Tous les services ont déjà été ajoutés');
       return;
     }
 
@@ -179,7 +177,7 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
             <select
               value={selectedClientId}
               onChange={e => setSelectedClientId(e.target.value as Id<'clients'> | '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
               required
             >
               <option value="">Sélectionner un client</option>
@@ -209,9 +207,7 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                  {/* First row - Flexible layout with fixed width elements */}
                   <div className="flex flex-wrap gap-2 items-end mb-2">
-                    {/* Service field - takes most space */}
                     <div className="flex-1 min-w-[200px]">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
                       <select
@@ -225,9 +221,8 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                             service =>
                               service._id === item.serviceId ||
                               !items.some(
-                                (otherItem, otherIndex) =>
-                                  otherIndex !== index && otherItem.serviceId === service._id
-                              )
+                                (otherItem, otherIndex) => otherIndex !== index && otherItem.serviceId === service._id,
+                              ),
                           )
                           .map(service => (
                             <option key={service._id} value={service._id}>
@@ -237,7 +232,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                       </select>
                     </div>
 
-                    {/* Quantity - fixed small width */}
                     <div className="w-14">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Qté</label>
                       <input
@@ -252,50 +246,41 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                       />
                     </div>
 
-                    {/* Price - fixed width for currency amount */}
                     <div className="w-20">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Prix HT</label>
                       <div className="px-3 py-2">{formatCurrency(item.price)}</div>
                     </div>
 
-                    {/* Discount value - fixed small width */}
-                    <div className="w-20">
+                    <div className="w-36">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Remise</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        max="99.99"
-                        value={item.discount || 0}
-                        onChange={e => updateItem(index, 'discount', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
-                        disabled={isReadOnly}
-                      />
-                    </div>
-
-                    {/* Discount unit - fixed small width, only shows when discount > 0 */}
-                    {(item.discount || 0) > 0 && (
-                      <div className="w-16">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Unité</label>
+                      <div className="flex">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          max="99.99"
+                          value={item.discount || 0}
+                          onChange={e => updateItem(index, 'discount', parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                          disabled={isReadOnly}
+                        />
                         <select
                           value={item.discountUnit || '%'}
                           onChange={e => updateItem(index, 'discountUnit', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                          className="rounded-r-md border border-gray-300 p-2 border-l-0"
                           disabled={isReadOnly}
                         >
                           <option value="%">%</option>
                           <option value="€">€</option>
                         </select>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Total - fixed width for currency amount */}
                     <div className="w-20">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Total HT</label>
                       <div className="px-3 py-2">{formatCurrency(item.total)}</div>
                     </div>
 
-                    {/* Delete button - fixed small width */}
                     {!isReadOnly && (
                       <div className="w-10">
                         <button
@@ -309,7 +294,6 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
                     )}
                   </div>
 
-                  {/* Second row - Discount description - only shows when discount > 0 */}
                   {(item.discount || 0) > 0 && (
                     <div className="mt-2 flex">
                       <div className="w-full">
