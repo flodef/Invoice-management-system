@@ -2,59 +2,27 @@ import { useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
-import { Id } from '../../convex/_generated/dataModel';
+import { Doc, Id } from '../../convex/_generated/dataModel';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { ClientEditorModal } from './ClientEditorModal';
 
 export function ClientManager() {
   const clients = useQuery(api.invoices.getClients) || [];
   const saveClient = useMutation(api.invoices.saveClient);
   const deleteClient = useMutation(api.invoices.deleteClient);
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingClient, setEditingClient] = useState<Id<'clients'> | null>(null);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [editingClient, setEditingClient] = useState<Doc<'clients'> | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Id<'clients'> | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    contactName: '',
-    address: '',
-    email: '',
-    legalForm: 'SARL',
-    status: 'active',
-  });
 
-  const resetForm = () => {
-    setFormData({ name: '', contactName: '', address: '', email: '', legalForm: 'SARL', status: 'active' });
+  const handleAddClient = () => {
     setEditingClient(null);
-    setShowForm(false);
+    setShowClientModal(true);
   };
 
-  const handleEdit = (client: any) => {
-    setFormData({
-      name: client.name,
-      contactName: client.contactName || '',
-      address: client.address,
-      email: client.email,
-      legalForm: client.legalForm || '',
-      status: client.status,
-    });
-    setEditingClient(client._id);
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await saveClient({
-        id: editingClient || undefined,
-        ...formData,
-      });
-      toast.success(editingClient ? 'Client mis à jour!' : 'Client ajouté!');
-      resetForm();
-    } catch (error) {
-      console.error('Client save error:', error);
-      toast.error("Échec de l'enregistrement du client");
-    }
+  const handleEditClient = (client: Doc<'clients'>) => {
+    setEditingClient(client);
+    setShowClientModal(true);
   };
 
   const handleDelete = async (id: Id<'clients'>) => {
@@ -71,108 +39,13 @@ export function ClientManager() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Clients</h2>
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
+        <button
+            onClick={handleAddClient}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
           >
             Ajouter un client
           </button>
-        )}
-      </div>
-
-      {showForm && (
-        <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-          <h3 className="text-lg font-semibold mb-4">
-            {editingClient ? 'Modifier le client' : 'Ajouter un nouveau client'}
-          </h3>
-          <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Entreprise</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom du contact</label>
-                <input
-                  type="text"
-                  value={formData.contactName}
-                  onChange={e => setFormData({ ...formData, contactName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Prénom"
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-              <textarea
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Forme juridique</label>
-              <select
-                value={formData.legalForm}
-                onChange={e => setFormData({ ...formData, legalForm: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="SARL">SARL</option>
-                <option value="EURL">EURL</option>
-                <option value="Micro-entrepreneur">Micro-entrepreneur</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-              <select
-                value={formData.status}
-                onChange={e => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="active">Actif</option>
-                <option value="inactive">Inactif</option>
-              </select>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                {editingClient ? 'Mettre à jour' : 'Ajouter'} le client
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </form>
         </div>
-      )}
 
       <div className="space-y-4">
         {clients.length === 0 ? (
@@ -206,7 +79,7 @@ export function ClientManager() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleEdit(client)}
+                      onClick={() => handleEditClient(client)}
                       className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
                       title="Modifier"
                     >
@@ -270,6 +143,12 @@ export function ClientManager() {
             </div>
           );
         })()}
+
+      <ClientEditorModal
+        isOpen={showClientModal}
+        onClose={() => setShowClientModal(false)}
+        client={editingClient}
+      />
     </div>
   );
 }

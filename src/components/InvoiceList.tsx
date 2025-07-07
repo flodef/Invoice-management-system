@@ -13,12 +13,9 @@ import {
   IconUpload,
 } from '@tabler/icons-react';
 import { UploadInvoiceModal } from './UploadInvoiceModal';
+import { InvoiceEditorModal } from './InvoiceEditorModal';
 
-interface InvoiceListProps {
-  onEditInvoice: (id: string) => void;
-}
-
-export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
+export function InvoiceList() {
   const invoices = useQuery(api.invoices.getInvoices) || [];
   const clients = useQuery(api.invoices.getClients) || [];
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
@@ -35,6 +32,8 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const [showPdfViewer, setShowPdfViewer] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
+  const [invoiceToEditId, setInvoiceToEditId] = useState<string | 'new' | null>(null);
   const initializedRef = useRef(false);
 
   const handleDelete = async (id: string) => {
@@ -377,7 +376,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
             Importer une facture
           </button>
           <button
-            onClick={() => onEditInvoice('new')}
+            onClick={() => {
+              setInvoiceToEditId('new');
+              setIsEditorModalOpen(true);
+            }}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
           >
             <IconPlus size={20} stroke={1.5} />
@@ -447,7 +449,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                               <div className="flex gap-2 ml-4">
                                 {isDraft && (
                                   <button
-                                    onClick={() => onEditInvoice(invoice._id)}
+                                    onClick={() => {
+                                      setInvoiceToEditId(invoice._id);
+                                      setIsEditorModalOpen(true);
+                                    }}
                                     className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
                                     title="Modifier"
                                   >
@@ -747,6 +752,16 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
           // Refresh will happen automatically via Convex
           setIsUploadModalOpen(false);
         }}
+      />
+
+      {/* Invoice Editor Modal */}
+      <InvoiceEditorModal
+        isOpen={isEditorModalOpen}
+        onClose={() => {
+          setIsEditorModalOpen(false);
+          setInvoiceToEditId(null);
+        }}
+        invoiceId={invoiceToEditId || 'new'}
       />
     </div>
   );

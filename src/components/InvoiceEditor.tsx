@@ -6,11 +6,11 @@ import { Id } from '../../convex/_generated/dataModel';
 import { InvoiceItem, InvoiceItemsManager } from './InvoiceItemsManager';
 
 interface InvoiceEditorProps {
-  invoiceId: string;
-  onBack: () => void;
+  invoiceId: string | 'new';
+  onClose: () => void;
 }
 
-export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
+export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
   const isNew = invoiceId === 'new';
   const invoice = useQuery(api.invoices.getInvoiceById, isNew ? 'skip' : { id: invoiceId as Id<'invoices'> });
   const clients = useQuery(api.invoices.getClients) || [];
@@ -82,63 +82,51 @@ export function InvoiceEditor({ invoiceId, onBack }: InvoiceEditorProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b">
-          <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold">
-              {isNew ? 'Créer une facture' : `Modifier la facture N°${invoice?.invoiceNumber}`}
-            </h2>
+    <form onSubmit={e => void handleSubmit(e)} className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
+        <select
+          value={selectedClientId}
+          onChange={e => setSelectedClientId(e.target.value as Id<'clients'> | '')}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+          required
+        >
+          <option value="">Sélectionner un client</option>
+          {clients.map(client => (
+            <option key={client._id} value={client._id}>
+              {client.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <InvoiceItemsManager items={items} setItems={setItems} isReadOnly={isReadOnly} />
+
+      {items.length > 0 && (
+        <div className="border-t pt-4">
+          <div className="flex justify-end">
+            <div className="text-right">
+              <p className="text-lg font-semibold">Total HT: {formatCurrency(totalAmount)}</p>
+            </div>
           </div>
         </div>
+      )}
 
-        <form onSubmit={e => void handleSubmit(e)} className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
-            <select
-              value={selectedClientId}
-              onChange={e => setSelectedClientId(e.target.value as Id<'clients'> | '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
-              required
-            >
-              <option value="">Sélectionner un client</option>
-              {clients.map(client => (
-                <option key={client._id} value={client._id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <InvoiceItemsManager items={items} setItems={setItems} isReadOnly={isReadOnly} />
-
-          {items.length > 0 && (
-            <div className="border-t pt-4">
-              <div className="flex justify-end">
-                <div className="text-right">
-                  <p className="text-lg font-semibold">Total HT: {formatCurrency(totalAmount)}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-            >
-              {isNew ? 'Créer la facture' : 'Mettre à jour la facture'}
-            </button>
-            <button
-              type="button"
-              onClick={onBack}
-              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors"
-            >
-              Retour
-            </button>
-          </div>
-        </form>
+      <div className="flex gap-4">
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          {isNew ? 'Créer la facture' : 'Mettre à jour la facture'}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors"
+        >
+          Retour
+        </button>
       </div>
-    </div>
+    </form>
   );
 }
