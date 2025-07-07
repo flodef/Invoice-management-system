@@ -2,52 +2,64 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { api } from './_generated/api';
 import { Id } from './_generated/dataModel';
-import { action, query } from './_generated/server';
+import { action, mutation, query } from './_generated/server';
 
 /**
  * Store an uploaded invoice file
  */
 export const storeUploadedInvoice = action({
   args: {
-    file: v.any(),
-    clientId: v.id('clients'),
-    invoiceDate: v.number(),
-    invoiceNumber: v.string(),
-    items: v.array(
-      v.object({
-        serviceId: v.id('services'),
-        label: v.string(),
-        quantity: v.number(),
-        price: v.number(),
-        discount: v.optional(v.number()),
-        discountUnit: v.optional(v.string()),
-        discountText: v.optional(v.string()),
-        total: v.number(),
-      }),
-    ),
-    totalAmount: v.number(),
+    file: v.id('_storage'), // This will be the storage ID
+    invoiceData: v.object({ // All other data will be nested here
+      clientId: v.id('clients'),
+      invoiceDate: v.number(),
+      invoiceNumber: v.string(),
+      items: v.array(
+        v.object({
+          serviceId: v.id('services'),
+          label: v.string(),
+          quantity: v.number(),
+          price: v.number(),
+          discount: v.optional(v.number()),
+          discountUnit: v.optional(v.string()),
+          discountText: v.optional(v.string()),
+          total: v.number(),
+        }),
+      ),
+      totalAmount: v.number(),
+    }),
   },
   handler: async (ctx, args): Promise<{ invoiceId: Id<'invoices'>; storageId: Id<'_storage'> }> => {
-    // Upload the file to storage
-    const storageId = await ctx.storage.store(args.file);
+    // Extract data from invoiceData
+    const { clientId, invoiceDate, invoiceNumber, items, totalAmount } = args.invoiceData;
 
     // Calculate payment date (invoice date + 1 month)
-    const paymentDate = new Date(args.invoiceDate);
+    const paymentDate = new Date(invoiceDate);
     paymentDate.setMonth(paymentDate.getMonth() + 1);
 
     // Insert the invoice into the database using insertInvoice mutation
     const invoiceId = await ctx.runMutation(api.invoices.createInvoice, {
-      clientId: args.clientId,
-      invoiceNumber: args.invoiceNumber,
-      invoiceDate: args.invoiceDate,
+      clientId,
+      invoiceNumber,
+      invoiceDate,
       paymentDate: paymentDate.getTime(),
       status: 'sent', // Uploaded invoices are already sent
-      items: args.items,
-      totalAmount: args.totalAmount,
-      uploadedInvoiceId: storageId,
+      items,
+      totalAmount,
+      uploadedInvoiceId: args.file, // Use the storageId directly
     });
 
-    return { invoiceId, storageId };
+    return { invoiceId, storageId: args.file };
+  },
+});
+
+/**
+ * Get a URL to upload a file to Convex storage
+ */
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
   },
 });
 

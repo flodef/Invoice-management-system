@@ -1,12 +1,12 @@
-import { IconFile, IconFileText, IconUpload, IconX } from '@tabler/icons-react';
-import { useAction, useQuery } from 'convex/react';
+import { IconUpload, IconX } from '@tabler/icons-react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../convex/_generated/api';
 import { Doc, Id } from '../../convex/_generated/dataModel';
 import { formatCurrency } from '../utils/formatters';
-import { InvoiceItem, InvoiceItemsManager } from './InvoiceItemsManager';
 import { CustomDateInput } from './CustomDateInput';
+import { InvoiceItem, InvoiceItemsManager } from './InvoiceItemsManager';
 
 interface UploadInvoiceModalProps {
   isOpen: boolean;
@@ -52,6 +52,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
 
   // Upload invoice action
   const storeUploadedInvoice = useAction(api.uploadInvoice.storeUploadedInvoice);
+  const generateUploadUrl = useMutation(api.uploadInvoice.generateUploadUrl);
 
   useEffect(() => {
     if (file) {
@@ -155,21 +156,39 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     }
 
     setIsSubmitting(true);
-    toast.loading('Importation de la facture...');
+    const loadingToastId = toast.loading('Importation de la facture...');
 
     try {
       const invoiceDateObj = new Date(invoiceDate);
 
-      const result = await storeUploadedInvoice({
-        file,
-        clientId: selectedClientId as Id<'clients'>,
-        invoiceDate: invoiceDateObj.getTime(),
-        invoiceNumber,
-        items,
-        totalAmount,
+      // Request an upload URL from Convex
+      const postUrl = await generateUploadUrl();
+
+      // Upload the file to the URL
+      const response = await fetch(postUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
       });
 
-      toast.dismiss();
+      if (!response.ok) {
+        throw new Error(`File upload failed: ${response.statusText}`);
+      }
+
+      const { storageId } = await response.json();
+
+      const result = await storeUploadedInvoice({
+        file: storageId, // Pass the storageId instead of the raw file
+        invoiceData: {
+          clientId: selectedClientId as Id<'clients'>,
+          invoiceDate: invoiceDateObj.getTime(),
+          invoiceNumber,
+          items,
+          totalAmount,
+        },
+      });
+
+      toast.dismiss(loadingToastId);
       toast.success('Facture importée avec succès');
 
       if (result && result.invoiceId) {
@@ -178,7 +197,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
       onClose();
     } catch (error) {
       console.error('Error uploading invoice:', error);
-      toast.dismiss();
+      toast.dismiss(loadingToastId);
       toast.error("Erreur lors de l'importation de la facture");
     } finally {
       setIsSubmitting(false);
@@ -283,11 +302,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
                 <div className="flex-1 min-w-[250px]">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date de facture → Échéance</label>
                   <div className="flex items-center">
-                    <CustomDateInput
-                      value={invoiceDate}
-                      onChange={setInvoiceDate}
-                      disabled={isSubmitting}
-                    />
+                    <CustomDateInput value={invoiceDate} onChange={setInvoiceDate} disabled={isSubmitting} />
                     <span className="mx-2">→</span>
                     <CustomDateInput
                       value={(() => {
@@ -336,4 +351,3 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     </div>
   );
 }
-

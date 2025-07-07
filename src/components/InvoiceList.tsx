@@ -743,9 +743,9 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       <UploadInvoiceModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={invoiceId => {
+        onSuccess={() => {
           // Refresh will happen automatically via Convex
-          onEditInvoice(invoiceId);
+          setIsUploadModalOpen(false);
         }}
       />
     </div>
