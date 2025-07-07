@@ -2,7 +2,17 @@ import { useMutation, useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
-import { IconEdit, IconMail, IconFileDownload, IconCopy, IconTrash, IconEye } from '@tabler/icons-react';
+import {
+  IconEdit,
+  IconMail,
+  IconFileDownload,
+  IconCopy,
+  IconTrash,
+  IconEye,
+  IconPlus,
+  IconUpload,
+} from '@tabler/icons-react';
+import { UploadInvoiceModal } from './UploadInvoiceModal';
 
 interface InvoiceListProps {
   onEditInvoice: (id: string) => void;
@@ -24,6 +34,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
   const [showPdfViewer, setShowPdfViewer] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const initializedRef = useRef(false);
 
   const handleDelete = async (id: string) => {
@@ -354,29 +365,22 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
               onClick={() => void handleDuplicatePreviousMonth()}
               className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors flex items-center gap-1"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="icon icon-tabler icon-tabler-copy"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                strokeWidth="2"
-                stroke="currentColor"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-                <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-              </svg>
+              <IconCopy size={20} stroke={1.5} />
               Dupliquer le mois précédent
             </button>
           )}
           <button
-            onClick={() => onEditInvoice('new')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            onClick={() => setIsUploadModalOpen(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
           >
+            <IconUpload size={20} stroke={1.5} />
+            Importer une facture
+          </button>
+          <button
+            onClick={() => onEditInvoice('new')}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
+          >
+            <IconPlus size={20} stroke={1.5} />
             Créer une facture
           </button>
         </div>
@@ -731,6 +735,16 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
             </div>
           );
         })()}
+      
+      {/* Upload Invoice Modal */}
+      <UploadInvoiceModal 
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={(invoiceId) => {
+          // Refresh will happen automatically via Convex
+          onEditInvoice(invoiceId);
+        }}
+      />
     </div>
   );
 }

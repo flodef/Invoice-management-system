@@ -273,6 +273,12 @@ export const getInvoiceById = query({
 export const createInvoice = mutation({
   args: {
     clientId: v.id('clients'),
+    invoiceNumber: v.optional(v.string()),
+    invoiceDate: v.optional(v.number()),
+    paymentDate: v.optional(v.number()),
+    status: v.optional(v.string()),
+    totalAmount: v.optional(v.number()),
+    uploadedInvoiceId: v.optional(v.id('_storage')),
     items: v.array(
       v.object({
         serviceId: v.id('services'),
@@ -281,7 +287,7 @@ export const createInvoice = mutation({
         price: v.number(),
         discount: v.optional(v.number()),
         discountUnit: v.optional(v.string()),
-        discountText: v.optional(v.string()), // Add missing discountText field
+        discountText: v.optional(v.string()),
         total: v.number(),
       }),
     ),
@@ -290,21 +296,32 @@ export const createInvoice = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error('Not authenticated');
 
-    const invoiceNumber: string = await ctx.runQuery(api.invoices.generateInvoiceNumber);
+    // Use provided values or generate defaults
+    const invoiceNumber: string = args.invoiceNumber || await ctx.runQuery(api.invoices.generateInvoiceNumber);
     const now = Date.now();
-    const paymentDate = now + 30 * 24 * 60 * 60 * 1000; // 30 days from now
-    const totalAmount = args.items.reduce((sum, item) => sum + item.total, 0);
+    const invoiceDate = args.invoiceDate || now;
+    const paymentDate = args.paymentDate || (invoiceDate + 30 * 24 * 60 * 60 * 1000); // 30 days from invoice date
+    const totalAmount = args.totalAmount || args.items.reduce((sum, item) => sum + item.total, 0);
+    const status = args.status || 'draft';
 
-    const invoiceId: Id<'invoices'> = await ctx.db.insert('invoices', {
+    // Create the invoice with all fields
+    const invoiceData: any = {
       userId,
       clientId: args.clientId,
       invoiceNumber,
-      invoiceDate: now,
+      invoiceDate,
       paymentDate,
-      status: 'draft',
+      status,
       totalAmount,
       items: args.items,
-    });
+    };
+    
+    // Add uploadedInvoiceId if provided
+    if (args.uploadedInvoiceId) {
+      invoiceData.uploadedInvoiceId = args.uploadedInvoiceId;
+    }
+    
+    const invoiceId: Id<'invoices'> = await ctx.db.insert('invoices', invoiceData);
 
     return invoiceId;
   },
