@@ -1,4 +1,4 @@
-import { IconUpload, IconX } from '@tabler/icons-react';
+import { IconFile, IconFileText, IconUpload, IconX } from '@tabler/icons-react';
 import { useAction, useQuery } from 'convex/react';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -6,6 +6,7 @@ import { api } from '../../convex/_generated/api';
 import { Doc, Id } from '../../convex/_generated/dataModel';
 import { formatCurrency } from '../utils/formatters';
 import { InvoiceItem, InvoiceItemsManager } from './InvoiceItemsManager';
+import { CustomDateInput } from './CustomDateInput';
 
 interface UploadInvoiceModalProps {
   isOpen: boolean;
@@ -245,51 +246,57 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
             <>
               <div className="flex flex-wrap items-end gap-4">
                 {/* Client selection */}
-                <div className="flex-1 min-w-32">
+                <div className="flex-1 min-w-[200px]">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                  <input
-                    type="text"
+                  <select
                     className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
-                    value={clients.find(client => client._id === selectedClientId)?.name}
+                    value={selectedClientId}
+                    onChange={e => setSelectedClientId(e.target.value)}
                     required
-                    readOnly
-                  />
+                    disabled
+                  >
+                    <option value="">Sélectionner un client</option>
+                    {clients
+                      .sort((a: Doc<'clients'>, b: Doc<'clients'>) => a.name.localeCompare(b.name))
+                      .map((client: Doc<'clients'>) => (
+                        <option key={client._id} value={client._id}>
+                          {client.name}
+                        </option>
+                      ))}
+                  </select>
                 </div>
 
                 {/* Invoice number */}
-                <div className="flex flex-col w-24">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">N° de facture</label>
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Numéro de facture</label>
                   <input
                     type="text"
                     className="w-full rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
                     value={invoiceNumber}
+                    onChange={e => setInvoiceNumber(e.target.value)}
                     required
                     readOnly
                   />
                 </div>
 
                 {/* Invoice and Payment Dates */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-[250px]">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date de facture → Échéance</label>
                   <div className="flex items-center">
-                    <input
-                      type="date"
-                      className="w-full max-w-32 rounded-md border border-gray-300 bg-white h-10 p-2"
+                    <CustomDateInput
                       value={invoiceDate}
-                      onChange={e => setInvoiceDate(e.target.value)}
-                      required
+                      onChange={setInvoiceDate}
                       disabled={isSubmitting}
                     />
                     <span className="mx-2">→</span>
-                    <input
-                      type="date"
-                      className="w-full max-w-32 rounded-md border border-gray-300 bg-gray-200 h-10 p-2"
+                    <CustomDateInput
                       value={(() => {
                         if (!invoiceDate) return '';
                         const date = new Date(invoiceDate);
                         date.setUTCMonth(date.getUTCMonth() + 1);
                         return date.toISOString().split('T')[0];
                       })()}
+                      onChange={() => {}}
                       readOnly
                     />
                   </div>
@@ -329,3 +336,4 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     </div>
   );
 }
+

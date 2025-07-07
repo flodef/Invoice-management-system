@@ -97,6 +97,7 @@ export function ServiceManager() {
                   step="1"
                   min="0"
                   value={formData.defaultPrice}
+                  onFocus={e => e.target.select()}
                   onChange={e =>
                     setFormData({ ...formData, defaultPrice: Math.max(0, parseFloat(e.target.value) || 0) })
                   }

@@ -1,4 +1,3 @@
-
 import { useQuery } from 'convex/react';
 import { toast } from 'sonner';
 import { api } from '../../convex/_generated/api';
@@ -137,12 +136,12 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
                 </select>
               </div>
 
-              <div className="w-14">
+              <div className="w-16">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Qté</label>
                 <input
                   type="number"
                   min="1"
-                  max="9"
+                  max="99"
                   step="1"
                   value={item.quantity}
                   onChange={e => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
