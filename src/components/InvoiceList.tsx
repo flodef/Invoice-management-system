@@ -94,34 +94,64 @@ export function InvoiceList() {
 
   const handleViewPDF = async (id: string) => {
     try {
-      toast.loading('Génération du PDF...');
-      const result = await generatePDF({ invoiceId: id as any });
-      toast.dismiss();
+      const invoice = invoices.find(inv => inv._id === id);
+      if (!invoice) {
+        toast.error('Facture non trouvée');
+        return;
+      }
 
-      if (result?.storageId) {
-        const storageUrl = await getStorageUrl({ storageId: result.storageId });
+      let storageIdToUse = invoice.pdfStorageId || invoice.uploadedInvoiceId;
+      let pdfBlobUrl: string | null = null;
 
+      if (storageIdToUse) {
+        // If a storageId exists, try to get the URL directly
+        toast.loading('Chargement du PDF...');
+        const storageUrl = await getStorageUrl({ storageId: storageIdToUse });
         if (storageUrl) {
-          // Fetch and create blob URL
           const response = await fetch(storageUrl);
           const blob = await response.blob();
-          const pdfBlobUrl = window.URL.createObjectURL(blob);
-
-          // Set state to show PDF viewer with this URL
-          setPdfUrl(pdfBlobUrl);
-          setShowPdfViewer(id);
-
-          toast.success('PDF généré avec succès!');
+          pdfBlobUrl = window.URL.createObjectURL(blob);
+          toast.dismiss();
+          toast.success('PDF chargé avec succès!');
         } else {
-          throw new Error("Impossible de récupérer l'URL du PDF");
+          toast.dismiss();
+          toast.error("Impossible de récupérer l'URL du PDF stocké");
+          // Fallback to generating if stored URL fails
+          storageIdToUse = null;
         }
+      }
+
+      if (!storageIdToUse) {
+        // If no storageId or if fetching failed, generate PDF
+        toast.loading('Génération du PDF...');
+        const result = await generatePDF({ invoiceId: id as any });
+        toast.dismiss();
+
+        if (result?.storageId) {
+          const storageUrl = await getStorageUrl({ storageId: result.storageId });
+          if (storageUrl) {
+            const response = await fetch(storageUrl);
+            const blob = await response.blob();
+            pdfBlobUrl = window.URL.createObjectURL(blob);
+            toast.success('PDF généré et chargé avec succès!');
+          } else {
+            throw new Error("Impossible de récupérer l'URL du PDF généré");
+          }
+        } else {
+          throw new Error('Aucun PDF généré');
+        }
+      }
+
+      if (pdfBlobUrl) {
+        setPdfUrl(pdfBlobUrl);
+        setShowPdfViewer(id);
       } else {
-        throw new Error('Aucun PDF généré');
+        toast.error('Une erreur inattendue est survenue lors du chargement du PDF.');
       }
     } catch (error) {
-      console.error('PDF generation error:', error);
+      console.error('PDF handling error:', error);
       toast.dismiss();
-      toast.error('Échec de la génération du PDF');
+      toast.error('Échec du traitement du PDF');
     }
   };
 

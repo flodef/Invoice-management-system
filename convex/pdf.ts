@@ -57,6 +57,12 @@ export const generateInvoicePDF = action({
 
     const storageId = await ctx.storage.store(new Blob([pdfBuffer], { type: 'application/pdf' }));
 
+    // Update the invoice with the new pdfStorageId
+    await ctx.runMutation(api.invoices.updateInvoicePDF, {
+      invoiceId: args.invoiceId,
+      pdfStorageId: storageId,
+    });
+
     return { storageId, message: 'PDF generated successfully' };
   },
 });
