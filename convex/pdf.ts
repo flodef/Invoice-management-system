@@ -77,10 +77,12 @@ function createInvoicePDF(invoice: any): Uint8Array {
   };
 
   const formatCurrency = (amount: number) => {
+    // Remove all whitespace characters (including non-breaking spaces) from the formatted string
+    // to prevent jsPDF from misinterpreting thousands separators.
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'EUR',
-    }).format(amount);
+    }).format(amount).replace(/\s/g, '');
   };
 
   // Create new PDF document
