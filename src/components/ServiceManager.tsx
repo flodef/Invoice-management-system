@@ -8,7 +8,7 @@ import { ServiceEditorModal } from './ServiceEditorModal';
 
 export function ServiceManager() {
   const services = useQuery(api.invoices.getServices) || [];
-  const saveService = useMutation(api.invoices.saveService);
+  const _saveService = useMutation(api.invoices.saveService); // This mutation is used in ServiceEditorModal.tsx
   const deleteService = useMutation(api.invoices.deleteService);
 
   const [showServiceModal, setShowServiceModal] = useState(false);

@@ -15,7 +15,15 @@ import {
 import { UploadInvoiceModal } from './UploadInvoiceModal';
 import { InvoiceEditorModal } from './InvoiceEditorModal';
 
-export function InvoiceList() {
+import { Id } from '../../convex/_generated/dataModel';
+
+type InvoiceIdOrNew = Id<'invoices'> | 'new';
+
+interface InvoiceListProps {
+  onEditInvoice: (invoiceId: InvoiceIdOrNew) => void;
+}
+
+export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const invoices = useQuery(api.invoices.getInvoices) || [];
   const clients = useQuery(api.invoices.getClients) || [];
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
@@ -33,7 +41,7 @@ export function InvoiceList() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
-  const [invoiceToEditId, setInvoiceToEditId] = useState<string | 'new' | null>(null);
+  const [invoiceToEditId, setInvoiceToEditId] = useState<InvoiceIdOrNew | null>(null);
   const initializedRef = useRef(false);
 
   const handleDelete = async (id: string) => {
@@ -117,7 +125,7 @@ export function InvoiceList() {
           toast.dismiss();
           toast.error("Impossible de récupérer l'URL du PDF stocké");
           // Fallback to generating if stored URL fails
-          storageIdToUse = null;
+          storageIdToUse = undefined;
         }
       }
 

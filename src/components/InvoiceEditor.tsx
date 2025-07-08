@@ -5,14 +5,16 @@ import { toast } from 'sonner';
 import { Id } from '../../convex/_generated/dataModel';
 import { InvoiceItem, InvoiceItemsManager } from './InvoiceItemsManager';
 
+type InvoiceIdType = Id<'invoices'> | 'new';
+
 interface InvoiceEditorProps {
-  invoiceId: string | 'new';
+  invoiceId: InvoiceIdType;
   onClose: () => void;
 }
 
 export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
   const isNew = invoiceId === 'new';
-  const invoice = useQuery(api.invoices.getInvoiceById, isNew ? 'skip' : { id: invoiceId as Id<'invoices'> });
+  const invoice = useQuery(api.invoices.getInvoiceById, isNew ? 'skip' : { id: invoiceId });
   const clients = useQuery(api.invoices.getClients) || [];
 
   const createInvoice = useMutation(api.invoices.createInvoice);
@@ -45,6 +47,7 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
     }
 
     try {
+      console.log('Submitting invoice with client ID:', selectedClientId, 'and items:', items);
       if (isNew) {
         await createInvoice({
           clientId: selectedClientId,
@@ -53,12 +56,13 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
         toast.success('Facture créée!');
       } else {
         await updateInvoice({
-          id: invoiceId as Id<'invoices'>,
+          id: invoiceId,
+          clientId: selectedClientId,
           items,
         });
         toast.success('Facture mise à jour!');
       }
-      onBack();
+      onClose();
     } catch {
       toast.error("Échec de l'enregistrement de la facture");
     }

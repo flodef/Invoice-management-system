@@ -1,10 +1,13 @@
 import React from 'react';
 import { InvoiceEditor } from './InvoiceEditor';
+import { Id } from '../../convex/_generated/dataModel';
+
+type InvoiceIdOrNew = Id<'invoices'> | 'new';
 
 interface InvoiceEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  invoiceId: string | 'new';
+  invoiceId: InvoiceIdOrNew;
 }
 
 export function InvoiceEditorModal({ isOpen, onClose, invoiceId }: InvoiceEditorModalProps) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { ProfileSettings } from "./ProfileSettings";
@@ -9,13 +9,21 @@ import { InvoiceEditor } from "./InvoiceEditor";
 import { StatisticsPage } from "./StatisticsPage";
 
 
+import { Id } from "../../convex/_generated/dataModel";
+
+type InvoiceIdOrNew = Id<'invoices'> | 'new';
+
 type Tab = "invoices" | "clients" | "services" | "profile" | "statistics";
 
 export function InvoiceManager() {
   const [activeTab, setActiveTab] = useState<Tab>("invoices");
-  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<InvoiceIdOrNew | null>(null);
   
   const userProfile = useQuery(api.invoices.getUserProfile);
+
+  const handleEditInvoice = useCallback((id: InvoiceIdOrNew) => {
+    setEditingInvoiceId(id);
+  }, []);
 
   const tabs = [
     { id: "invoices" as const, label: "Factures", icon: "📄" },
@@ -44,7 +52,7 @@ export function InvoiceManager() {
     return (
       <InvoiceEditor
         invoiceId={editingInvoiceId}
-        onBack={() => setEditingInvoiceId(null)}
+        onClose={() => setEditingInvoiceId(null)}
       />
     );
   }
@@ -74,7 +82,7 @@ export function InvoiceManager() {
       {/* Tab Content */}
       <div className="bg-white rounded-lg shadow-sm border">
         {activeTab === "invoices" && (
-          <InvoiceList onEditInvoice={setEditingInvoiceId} />
+          <InvoiceList onEditInvoice={handleEditInvoice} />
         )}
         {activeTab === "statistics" && <StatisticsPage />}
         {activeTab === "clients" && <ClientManager />}

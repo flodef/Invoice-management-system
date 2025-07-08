@@ -8,7 +8,7 @@ import { ClientEditorModal } from './ClientEditorModal';
 
 export function ClientManager() {
   const clients = useQuery(api.invoices.getClients) || [];
-  const saveClient = useMutation(api.invoices.saveClient);
+  const _saveClient = useMutation(api.invoices.saveClient); // This mutation is used in ClientEditorModal.tsx
   const deleteClient = useMutation(api.invoices.deleteClient);
 
   const [showClientModal, setShowClientModal] = useState(false);
@@ -40,12 +40,12 @@ export function ClientManager() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Clients</h2>
         <button
-            onClick={handleAddClient}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Ajouter un client
-          </button>
-        </div>
+          onClick={handleAddClient}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Ajouter un client
+        </button>
+      </div>
 
       <div className="space-y-4">
         {clients.length === 0 ? (
@@ -60,9 +60,7 @@ export function ClientManager() {
             .map(client => (
               <div
                 key={client._id}
-                className={`border rounded-lg p-4 hover:bg-gray-50 ${
-                  client.status !== 'active' ? 'bg-gray-100' : ''
-                }`}
+                className={`border rounded-lg p-4 hover:bg-gray-50 ${client.status !== 'active' ? 'bg-gray-100' : ''}`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -144,11 +142,7 @@ export function ClientManager() {
           );
         })()}
 
-      <ClientEditorModal
-        isOpen={showClientModal}
-        onClose={() => setShowClientModal(false)}
-        client={editingClient}
-      />
+      <ClientEditorModal isOpen={showClientModal} onClose={() => setShowClientModal(false)} client={editingClient} />
     </div>
   );
 }
