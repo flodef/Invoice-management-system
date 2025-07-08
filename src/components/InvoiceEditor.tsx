@@ -115,7 +115,7 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
         </div>
       )}
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 justify-end">
         <button
           type="submit"
           className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
