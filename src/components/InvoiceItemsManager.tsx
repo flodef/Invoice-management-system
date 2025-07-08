@@ -144,6 +144,7 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
                   max="99"
                   step="1"
                   value={item.quantity}
+                  onFocus={e => e.target.select()}
                   onChange={e => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
                   disabled={isReadOnly}
@@ -164,6 +165,7 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
                     step="0.01"
                     max="99.99"
                     value={item.discount || 0}
+                    onFocus={e => e.target.select()}
                     onChange={e => updateItem(index, 'discount', parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
                     disabled={isReadOnly}

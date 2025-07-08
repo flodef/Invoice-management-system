@@ -47,7 +47,6 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
     }
 
     try {
-      console.log('Submitting invoice with client ID:', selectedClientId, 'and items:', items);
       if (isNew) {
         await createInvoice({
           clientId: selectedClientId,

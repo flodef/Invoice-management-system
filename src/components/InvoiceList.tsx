@@ -328,7 +328,6 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const shouldShowDuplicateButton = !hasInvoicesInCurrentMonth() && hasPreviousMonthInvoices();
 
   const toggleMonth = (monthKey: string) => {
-    console.log(monthKey);
     setOpenMonths(prev => {
       const newSet = new Set(prev);
       if (newSet.has(monthKey)) {
