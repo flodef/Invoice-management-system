@@ -68,8 +68,12 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
     newItems[index] = { ...newItems[index], [field]: value };
 
     // Automatic clearing of discountText if discount is removed
-    if (field === 'discount' && (value === 0 || value === undefined)) {
-      newItems[index].discountText = '';
+    if (field === 'discount') {
+      if (value === 0 || value === undefined) {
+        newItems[index].discountText = '';
+      } else if (value > 0) {
+        newItems[index].discountText = 'Promotion';
+      }
     }
 
     if (field === 'serviceId') {

@@ -519,7 +519,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                 >
                                   <IconCopy size={20} stroke={1.5} />
                                 </button>
-                                {!isDraft && (
+                                {isDraft && (
                                   <button
                                     onClick={() => setShowDeleteConfirm(invoice._id)}
                                     className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
