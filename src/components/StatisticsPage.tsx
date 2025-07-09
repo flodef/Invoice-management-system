@@ -77,7 +77,14 @@ export function StatisticsPage() {
   };
 
   // Memoize chart options with minimal event handling
-  const options = useMemo<ChartOptions<'line'>>(() => {
+  const last3MonthsTotal = useMemo(() => {
+    if (monthlyData.length < 1) return 0;
+
+    // Take the last 3 months, or fewer if not available
+    const last3 = monthlyData.slice(-3);
+    return last3.reduce((sum, item) => sum + item.total, 0);
+  }, [monthlyData]);
+    const options = useMemo<ChartOptions<'line'>>(() => {
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -150,9 +157,9 @@ export function StatisticsPage() {
                   </div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="text-sm text-gray-600">Mois le plus élevé</div>
+                  <div className="text-sm text-gray-600">3 derniers mois</div>
                   <div className="text-xl font-bold text-blue-800">
-                    {formatCurrency(Math.max(...monthlyData.map(item => item.total)))}
+                    {formatCurrency(last3MonthsTotal)}
                   </div>
                 </div>
               </div>
