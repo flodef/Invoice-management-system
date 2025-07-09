@@ -233,8 +233,8 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
           clientName = client?.name || '';
         }
 
-        // Sanitize client name for filename (remove spaces, special chars)
-        const sanitizedClientName = clientName.replace(/[^a-zA-Z0-9]/g, '-');
+        // Sanitize client name for filename (remove special chars)
+        const sanitizedClientName = clientName.replace(/[^a-zA-Z0-9\s'\u00C0-\u017F]/g, '');
 
         // Create filename with invoice number and client name
         const filename = `Facture-${invoiceNumber}-${sanitizedClientName}.pdf`;
