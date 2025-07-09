@@ -1,5 +1,5 @@
 import { IconX } from '@tabler/icons-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
@@ -26,7 +26,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
+  const resetFormData = useCallback(() => {
     if (service) {
       setFormData({
         label: service.label,
@@ -38,6 +38,10 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
     }
   }, [service]);
 
+  useEffect(() => {
+    resetFormData();
+  }, [resetFormData]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -48,6 +52,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
         ...formData,
       });
       toast.success(service ? 'Service mis à jour!' : 'Service ajouté!');
+      resetFormData();
       onClose();
     } catch {
       toast.error("Échec de l'enregistrement du service");
@@ -63,7 +68,14 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold">{service ? 'Modifier le service' : 'Ajouter un nouveau service'}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700" disabled={isSubmitting}>
+          <button
+            onClick={() => {
+              resetFormData();
+              onClose();
+            }}
+            className="text-gray-500 hover:text-gray-700"
+            disabled={isSubmitting}
+          >
             <IconX size={24} />
           </button>
         </div>
@@ -102,7 +114,10 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
             <button
               type="button"
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              onClick={onClose}
+              onClick={() => {
+                resetFormData();
+                onClose();
+              }}
               disabled={isSubmitting}
             >
               Annuler

@@ -1,5 +1,5 @@
 import { IconX } from '@tabler/icons-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
+  const resetFormData = useCallback(() => {
     if (client) {
       setFormData({
         name: client.name,
@@ -47,6 +47,10 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
     }
   }, [client]);
 
+  useEffect(() => {
+    resetFormData();
+  }, [resetFormData]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -56,6 +60,7 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
         ...formData,
       });
       toast.success(client ? 'Client mis à jour!' : 'Client ajouté!');
+      resetFormData();
       onClose();
     } catch (error) {
       console.error('Client save error:', error);
@@ -72,7 +77,14 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold">{client ? 'Modifier le client' : 'Ajouter un nouveau client'}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700" disabled={isSubmitting}>
+          <button
+            onClick={() => {
+              resetFormData();
+              onClose();
+            }}
+            className="text-gray-500 hover:text-gray-700"
+            disabled={isSubmitting}
+          >
             <IconX size={24} />
           </button>
         </div>
@@ -156,7 +168,10 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
             <button
               type="button"
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              onClick={onClose}
+              onClick={() => {
+                resetFormData();
+                onClose();
+              }}
               disabled={isSubmitting}
             >
               Annuler
