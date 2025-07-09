@@ -28,6 +28,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const clients = useQuery(api.invoices.getClients) || [];
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
   const duplicateInvoice = useMutation(api.invoices.duplicateInvoice);
+  const toggleInvoiceStatus = useMutation(api.invoices.toggleInvoiceStatus);
   const generatePDF = useAction(api.pdf.generateInvoicePDF);
   const getStorageUrl = useAction(api.pdf.getStorageUrl);
   const sendInvoiceEmail = useAction(api.email.sendInvoiceEmail);
@@ -51,6 +52,17 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       setShowDeleteConfirm(null);
     } catch {
       toast.error('Échec de la suppression de la facture');
+    }
+  };
+
+  const handleToggleStatus = async (id: Id<'invoices'>, status: string) => {
+    if (status !== 'sent' && status !== 'paid') return;
+
+    try {
+      await toggleInvoiceStatus({ id, status });
+      toast.success(`Facture marquée comme ${status === 'sent' ? 'payée' : 'envoyée'}`);
+    } catch {
+      toast.error('Échec du changement de statut de la facture');
     }
   };
 
@@ -477,7 +489,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                               </div>
                               <div className="flex items-center gap-2 mt-2 sm:mt-0">
                                 <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}
+                                  onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
+                                  } ${getStatusColor(invoice.status)}`}
                                 >
                                   {getStatusLabel(invoice.status)}
                                 </span>

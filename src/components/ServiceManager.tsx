@@ -10,6 +10,7 @@ export function ServiceManager() {
   const services = useQuery(api.invoices.getServices) || [];
   const _saveService = useMutation(api.invoices.saveService); // This mutation is used in ServiceEditorModal.tsx
   const deleteService = useMutation(api.invoices.deleteService);
+  const toggleServiceStatus = useMutation(api.invoices.toggleServiceStatus);
 
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<Doc<'services'> | null>(null);
@@ -35,17 +36,26 @@ export function ServiceManager() {
     }
   };
 
+  const handleToggleStatus = async (id: Id<'services'>, isActive: boolean) => {
+    try {
+      await toggleServiceStatus({ id, isActive });
+      toast.success(`Service marqué comme ${isActive ? 'inactif' : 'actif'}`);
+    } catch {
+      toast.error('Échec du changement de statut du service');
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Services</h2>
         <button
-            onClick={handleAddService}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Ajouter un service
-          </button>
-        </div>
+          onClick={handleAddService}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Ajouter un service
+        </button>
+      </div>
 
       <div className="space-y-4">
         {services.length === 0 ? (
@@ -71,7 +81,8 @@ export function ServiceManager() {
                       )}
                     </p>
                     <span
-                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                      onClick={() => void handleToggleStatus(service._id, service.isActive)}
+                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 cursor-pointer ${
                         service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}
                     >

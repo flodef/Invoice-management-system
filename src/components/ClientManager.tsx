@@ -10,6 +10,7 @@ export function ClientManager() {
   const clients = useQuery(api.invoices.getClients) || [];
   const _saveClient = useMutation(api.invoices.saveClient); // This mutation is used in ClientEditorModal.tsx
   const deleteClient = useMutation(api.invoices.deleteClient);
+  const toggleClientStatus = useMutation(api.invoices.toggleClientStatus);
 
   const [showClientModal, setShowClientModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Doc<'clients'> | null>(null);
@@ -32,6 +33,15 @@ export function ClientManager() {
       setShowDeleteConfirm(null);
     } catch {
       toast.error('Échec de la suppression du client');
+    }
+  };
+
+  const handleToggleStatus = async (id: Id<'clients'>, isActive: boolean) => {
+    try {
+      await toggleClientStatus({ id, isActive });
+      toast.success(`Client marqué comme ${isActive ? 'inactif' : 'actif'}`);
+    } catch {
+      toast.error('Échec du changement de statut du client');
     }
   };
 
@@ -68,7 +78,8 @@ export function ClientManager() {
                     <p className="text-gray-600">{client.email}</p>
                     <p className="text-gray-600 text-sm mt-1">{client.address}</p>
                     <span
-                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                      onClick={() => void handleToggleStatus(client._id, client.isActive)}
+                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 cursor-pointer ${
                         client.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}
                     >

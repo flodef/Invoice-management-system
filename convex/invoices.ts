@@ -103,6 +103,25 @@ export const deleteClient = mutation({
   },
 });
 
+// Toggle client status
+export const toggleClientStatus = mutation({
+  args: {
+    id: v.id('clients'),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const client = await ctx.db.get(args.id);
+    if (!client || client.userId !== userId) {
+      throw new Error('Client not found');
+    }
+
+    await ctx.db.patch(args.id, { isActive: !args.isActive });
+  },
+});
+
 // Get all services
 export const getServices = query({
   args: {},
@@ -154,6 +173,25 @@ export const deleteService = mutation({
     }
 
     await ctx.db.delete(args.id);
+  },
+});
+
+// Toggle service status
+export const toggleServiceStatus = mutation({
+  args: {
+    id: v.id('services'),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const service = await ctx.db.get(args.id);
+    if (!service || service.userId !== userId) {
+      throw new Error('Service not found');
+    }
+
+    await ctx.db.patch(args.id, { isActive: !args.isActive });
   },
 });
 
@@ -380,6 +418,31 @@ export const updateInvoiceStatus = mutation({
     }
 
     await ctx.db.patch(args.id, { status: args.status });
+  },
+});
+
+// Toggle invoice status between sent and paid
+export const toggleInvoiceStatus = mutation({
+  args: {
+    id: v.id('invoices'),
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const invoice = await ctx.db.get(args.id);
+    if (!invoice || invoice.userId !== userId) {
+      throw new Error('Invoice not found');
+    }
+
+    if (args.status !== 'sent' && args.status !== 'paid') {
+      throw new Error('Invalid status for toggling');
+    }
+
+    const newStatus = args.status === 'sent' ? 'paid' : 'sent';
+
+    await ctx.db.patch(args.id, { status: newStatus });
   },
 });
 
