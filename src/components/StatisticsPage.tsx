@@ -21,7 +21,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 export function StatisticsPage() {
   const rawInvoices = useQuery(api.invoices.getInvoices);
-  
+
   // Use memoized empty array as fallback for invoices
   const invoices = useMemo(() => rawInvoices || [], [rawInvoices]);
 
@@ -77,14 +77,50 @@ export function StatisticsPage() {
   };
 
   // Memoize chart options with minimal event handling
-  const last3MonthsTotal = useMemo(() => {
-    if (monthlyData.length < 1) return 0;
+  const lastQuarterTotal = useMemo(() => {
+    if (!monthlyData.length) return 0;
 
-    // Take the last 3 months, or fewer if not available
-    const last3 = monthlyData.slice(-3);
-    return last3.reduce((sum, item) => sum + item.total, 0);
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const currentYear = now.getFullYear();
+
+    let quarterEndMonth: number;
+    let quarterStartMonth: number;
+    let quarterYear: number;
+
+    // Determine the previous full quarter
+    if (currentMonth >= 0 && currentMonth <= 2) {
+      // Q1 (Jan-Mar) -> Previous is Q4 of last year
+      quarterEndMonth = 11; // December
+      quarterStartMonth = 9; // October
+      quarterYear = currentYear - 1;
+    } else if (currentMonth >= 3 && currentMonth <= 5) {
+      // Q2 (Apr-Jun) -> Previous is Q1
+      quarterEndMonth = 2; // March
+      quarterStartMonth = 0; // January
+      quarterYear = currentYear;
+    } else if (currentMonth >= 6 && currentMonth <= 8) {
+      // Q3 (Jul-Sep) -> Previous is Q2
+      quarterEndMonth = 5; // June
+      quarterStartMonth = 3; // April
+      quarterYear = currentYear;
+    } else {
+      // Q4 (Oct-Dec) -> Previous is Q3
+      quarterEndMonth = 8; // September
+      quarterStartMonth = 6; // July
+      quarterYear = currentYear;
+    }
+
+    const previousQuarterMonths: string[] = [];
+    for (let i = quarterStartMonth; i <= quarterEndMonth; i++) {
+      previousQuarterMonths.push(`${quarterYear}-${(i + 1).toString().padStart(2, '0')}`);
+    }
+
+    const filteredData = monthlyData.filter(item => previousQuarterMonths.includes(item.monthKey));
+
+    return filteredData.reduce((sum, item) => sum + item.total, 0);
   }, [monthlyData]);
-    const options = useMemo<ChartOptions<'line'>>(() => {
+  const options = useMemo<ChartOptions<'line'>>(() => {
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -157,10 +193,8 @@ export function StatisticsPage() {
                   </div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="text-sm text-gray-600">3 derniers mois</div>
-                  <div className="text-xl font-bold text-blue-800">
-                    {formatCurrency(last3MonthsTotal)}
-                  </div>
+                  <div className="text-sm text-gray-600">Dernier trimestre</div>
+                  <div className="text-xl font-bold text-blue-800">{formatCurrency(lastQuarterTotal)}</div>
                 </div>
               </div>
             </div>
