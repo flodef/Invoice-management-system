@@ -125,6 +125,17 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     setFile(selectedFile);
   };
 
+  const resetInvoiceData = () => {
+    setFile(null);
+    setSelectedClientId('');
+    setInvoiceDate('');
+    setInvoiceNumber('');
+    setItems([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Clear the file input as well
+    }
+  };
+
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,6 +195,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
       if (result && result.invoiceId) {
         onSuccess(result.invoiceId);
       }
+      resetInvoiceData();
       onClose();
     } catch (error) {
       console.error('Error uploading invoice:', error);
@@ -205,7 +217,14 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold">Importer une facture</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700" disabled={isSubmitting}>
+          <button
+            onClick={() => {
+              resetInvoiceData();
+              onClose();
+            }}
+            className="text-gray-500 hover:text-gray-700"
+            disabled={isSubmitting}
+          >
             <IconX size={24} />
           </button>
         </div>
@@ -218,11 +237,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
                 type="button"
                 className="mt-2 text-sm text-red-600 hover:text-red-800"
                 onClick={() => {
-                  setFile(null);
-                  setSelectedClientId('');
-                  setInvoiceDate('');
-                  setInvoiceNumber('');
-                  setItems([]);
+                  resetInvoiceData();
                 }}
                 disabled={isSubmitting}
               >
@@ -340,7 +355,10 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
             <button
               type="button"
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              onClick={onClose}
+              onClick={() => {
+                resetInvoiceData();
+                onClose();
+              }}
               disabled={isSubmitting}
             >
               Annuler
@@ -348,7 +366,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-              disabled={isSubmitting || !file || !selectedClientId || items.length === 0}
+              disabled={isSubmitting}
             >
               {isSubmitting ? 'Importation...' : 'Importer la facture'}
             </button>
