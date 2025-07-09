@@ -10,7 +10,8 @@ import { action, mutation, query } from './_generated/server';
 export const storeUploadedInvoice = action({
   args: {
     file: v.id('_storage'), // This will be the storage ID
-    invoiceData: v.object({ // All other data will be nested here
+    invoiceData: v.object({
+      // All other data will be nested here
       clientId: v.id('clients'),
       invoiceDate: v.number(),
       invoiceNumber: v.string(),
@@ -46,7 +47,7 @@ export const storeUploadedInvoice = action({
       status: 'sent', // Uploaded invoices are already sent
       items,
       totalAmount,
-      uploadedInvoiceId: args.file, // Use the storageId directly
+      pdfStorageId: args.file, // Use the storageId directly
     });
 
     return { invoiceId, storageId: args.file };
@@ -58,7 +59,7 @@ export const storeUploadedInvoice = action({
  */
 export const generateUploadUrl = mutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async ctx => {
     return await ctx.storage.generateUploadUrl();
   },
 });

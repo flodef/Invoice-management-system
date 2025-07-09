@@ -107,7 +107,7 @@ export const createInvoice = mutation({
     paymentDate: v.optional(v.number()),
     status: v.optional(v.string()),
     totalAmount: v.optional(v.number()),
-    uploadedInvoiceId: v.optional(v.id('_storage')),
+    pdfStorageId: v.optional(v.id('_storage')),
     items: v.array(
       v.object({
         serviceId: v.id('services'),
@@ -150,9 +150,9 @@ export const createInvoice = mutation({
       items: itemsWithRoundedTotals,
     };
 
-    // Add uploadedInvoiceId if provided
-    if (args.uploadedInvoiceId) {
-      invoiceData.uploadedInvoiceId = args.uploadedInvoiceId;
+    // Add pdfStorageId if provided
+    if (args.pdfStorageId) {
+      invoiceData.pdfStorageId = args.pdfStorageId;
     }
 
     const invoiceId: Id<'invoices'> = await ctx.db.insert('invoices', invoiceData);
@@ -285,9 +285,6 @@ export const deleteInvoice = mutation({
     // Delete associated PDF files from storage if they exist
     if (invoice.pdfStorageId) {
       await ctx.storage.delete(invoice.pdfStorageId);
-    }
-    if (invoice.uploadedInvoiceId) {
-      await ctx.storage.delete(invoice.uploadedInvoiceId);
     }
 
     await ctx.db.delete(args.id);

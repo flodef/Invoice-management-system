@@ -120,7 +120,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
         return;
       }
 
-      let storageIdToUse = invoice.pdfStorageId || invoice.uploadedInvoiceId;
+      let storageIdToUse = invoice.pdfStorageId;
       let pdfBlobUrl: string | null = null;
 
       if (storageIdToUse) {
