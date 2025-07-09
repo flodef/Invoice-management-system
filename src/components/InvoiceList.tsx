@@ -177,47 +177,82 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
   const handleDownloadPDF = async (id: string) => {
     try {
-      toast.loading('Génération du PDF...');
-      const result = await generatePDF({ invoiceId: id as any });
-      toast.dismiss();
+      const invoice = invoices.find(inv => inv._id === id);
+      if (!invoice) {
+        toast.error('Facture non trouvée');
+        return;
+      }
 
-      if (result?.storageId) {
-        const storageUrl = await getStorageUrl({ storageId: result.storageId });
+      let storageIdToUse = invoice.pdfStorageId;
+      let pdfBlobUrl: string | null = null;
 
+      if (storageIdToUse) {
+        toast.loading('Chargement du PDF...');
+        const storageUrl = await getStorageUrl({ storageId: storageIdToUse });
         if (storageUrl) {
           const response = await fetch(storageUrl);
           const blob = await response.blob();
-
-          // Get invoice details for better filename
-          const invoiceDetails = invoices.find(inv => inv._id === id);
-          const invoiceNumber = invoiceDetails?.invoiceNumber || id;
-          let clientName = '';
-
-          if (invoiceDetails?.client?._id) {
-            const client = clients?.find(c => c._id === invoiceDetails.client?._id);
-            clientName = client?.name || '';
-          }
-
-          // Sanitize client name for filename (remove spaces, special chars)
-          const sanitizedClientName = clientName.replace(/[^a-zA-Z0-9]/g, '-');
-
-          // Create filename with invoice number and client name
-          const filename = `Facture-${invoiceNumber}-${sanitizedClientName}.pdf`;
-
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(downloadUrl);
-
-          toast.success('PDF téléchargé avec succès!');
+          pdfBlobUrl = window.URL.createObjectURL(blob);
+          toast.dismiss();
+          toast.success('PDF chargé avec succès!');
+        } else {
+          toast.dismiss();
+          toast.error("Impossible de récupérer l'URL du PDF stocké");
+          storageIdToUse = undefined;
         }
       }
+
+      if (!storageIdToUse) {
+        toast.loading('Génération du PDF...');
+        const result = await generatePDF({ invoiceId: id as any });
+        toast.dismiss();
+
+        if (result?.storageId) {
+          const storageUrl = await getStorageUrl({ storageId: result.storageId });
+          if (storageUrl) {
+            const response = await fetch(storageUrl);
+            const blob = await response.blob();
+            pdfBlobUrl = window.URL.createObjectURL(blob);
+            toast.success('PDF généré et chargé avec succès!');
+          } else {
+            throw new Error("Impossible de récupérer l'URL du PDF généré");
+          }
+        } else {
+          throw new Error('Aucun PDF généré');
+        }
+      }
+
+      if (pdfBlobUrl) {
+        // Get invoice details for better filename
+        const invoiceDetails = invoices.find(inv => inv._id === id);
+        const invoiceNumber = invoiceDetails?.invoiceNumber || id;
+        let clientName = '';
+
+        if (invoiceDetails?.client?._id) {
+          const client = clients?.find(c => c._id === invoiceDetails.client?._id);
+          clientName = client?.name || '';
+        }
+
+        // Sanitize client name for filename (remove spaces, special chars)
+        const sanitizedClientName = clientName.replace(/[^a-zA-Z0-9]/g, '-');
+
+        // Create filename with invoice number and client name
+        const filename = `Facture-${invoiceNumber}-${sanitizedClientName}.pdf`;
+
+        const link = document.createElement('a');
+        link.href = pdfBlobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(pdfBlobUrl);
+
+        toast.success('PDF téléchargé avec succès!');
+      } else {
+        toast.error('Une erreur inattendue est survenue lors du téléchargement du PDF.');
+      }
     } catch (error) {
-      toast.error('Échec de la génération du PDF');
+      toast.error('Échec du traitement du PDF');
       console.error('Error downloading PDF:', error);
     }
   };
