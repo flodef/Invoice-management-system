@@ -5,6 +5,10 @@ import { Id } from './_generated/dataModel';
 import { mutation, query } from './_generated/server';
 import { calculatePaymentDate } from './utils';
 
+function roundToTwoDecimals(num: number): number {
+  return parseFloat(num.toFixed(2));
+}
+
 // Generate invoice number
 export const generateInvoiceNumber = query({
   args: {},
@@ -129,6 +133,11 @@ export const createInvoice = mutation({
     const totalAmount = args.totalAmount || args.items.reduce((sum, item) => sum + item.total, 0);
     const status = args.status || 'draft';
 
+    const itemsWithRoundedTotals = args.items.map(item => ({
+      ...item,
+      total: roundToTwoDecimals(item.total),
+    }));
+
     // Create the invoice with all fields
     const invoiceData: any = {
       userId,
@@ -137,8 +146,8 @@ export const createInvoice = mutation({
       invoiceDate,
       paymentDate,
       status,
-      totalAmount,
-      items: args.items,
+      totalAmount: roundToTwoDecimals(totalAmount),
+      items: itemsWithRoundedTotals,
     };
 
     // Add uploadedInvoiceId if provided
@@ -179,12 +188,17 @@ export const updateInvoice = mutation({
       throw new Error('Invoice not found');
     }
 
-    const totalAmount = args.items.reduce((sum, item) => sum + item.total, 0);
+    const itemsWithRoundedTotals = args.items.map(item => ({
+      ...item,
+      total: roundToTwoDecimals(item.total),
+    }));
+
+    const totalAmount = itemsWithRoundedTotals.reduce((sum, item) => sum + item.total, 0);
 
     // Create patch object with required fields
     const patchObj: any = {
-      items: args.items,
-      totalAmount,
+      items: itemsWithRoundedTotals,
+      totalAmount: roundToTwoDecimals(totalAmount),
     };
 
     // Add clientId to patch if provided

@@ -103,7 +103,7 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
         discountAmount = discountValue;
       }
 
-      newItems[index].total = Math.max(0, baseTotal - discountAmount);
+      newItems[index].total = parseFloat(Math.max(0, baseTotal - discountAmount).toFixed(2));
     }
 
     setItems(newItems);
