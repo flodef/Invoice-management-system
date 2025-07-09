@@ -69,8 +69,8 @@ export const saveClient = mutation({
     contactName: v.string(),
     address: v.string(),
     email: v.string(),
-    legalForm: v.optional(v.string()),
-    status: v.string(),
+    legalForm: v.string(),
+    isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -123,7 +123,7 @@ export const saveService = mutation({
     id: v.optional(v.id('services')),
     label: v.string(),
     defaultPrice: v.number(),
-    isGlobal: v.boolean(),
+    isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -133,30 +133,6 @@ export const saveService = mutation({
 
     if (id) {
       await ctx.db.patch(id, serviceData);
-
-      // If global service updated, update all unsent invoices
-      if (serviceData.isGlobal) {
-        const invoices = await ctx.db
-          .query('invoices')
-          .withIndex('by_user', q => q.eq('userId', userId))
-          .filter(q => q.eq(q.field('status'), 'draft'))
-          .collect();
-
-        for (const invoice of invoices) {
-          const updatedItems = invoice.items.map(item =>
-            item.serviceId === id
-              ? {
-                  ...item,
-                  label: serviceData.label,
-                  price: serviceData.defaultPrice,
-                  total: item.quantity * serviceData.defaultPrice,
-                }
-              : item,
-          );
-          const newTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
-          await ctx.db.patch(invoice._id, { items: updatedItems, totalAmount: newTotal });
-        }
-      }
 
       return id;
     } else {
@@ -512,9 +488,7 @@ export const checkInvoiceExists = mutation({
 
     const existingInvoice = await ctx.db
       .query('invoices')
-      .withIndex('by_user_and_number', q =>
-        q.eq('userId', userId).eq('invoiceNumber', args.invoiceNumber)
-      )
+      .withIndex('by_user_and_number', q => q.eq('userId', userId).eq('invoiceNumber', args.invoiceNumber))
       .first();
 
     if (existingInvoice) {

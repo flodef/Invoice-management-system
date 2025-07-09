@@ -20,15 +20,15 @@ const applicationTables = {
     contactName: v.string(), // Contact person name for personalized emails
     address: v.string(),
     email: v.string(),
-    legalForm: v.optional(v.string()), // "SARL", "EURL", "Micro-entrepreneur"
-    status: v.string(), // "active", "inactive"
+    legalForm: v.string(), // "SARL", "EURL", "Micro-entrepreneur"
+    isActive: v.boolean(),
   }).index('by_user', ['userId']),
 
   services: defineTable({
     userId: v.id('users'),
     label: v.string(),
     defaultPrice: v.number(),
-    isGlobal: v.boolean(), // if true, changes affect all unsent invoices
+    isActive: v.boolean(),
   }).index('by_user', ['userId']),
 
   invoices: defineTable({

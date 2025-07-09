@@ -53,14 +53,14 @@ export function ClientManager() {
         ) : (
           clients
             .sort((a, b) => {
-              if (a.status === 'active' && b.status !== 'active') return -1;
-              if (a.status !== 'active' && b.status === 'active') return 1;
+              if (a.isActive && !b.isActive) return -1;
+              if (!a.isActive && b.isActive) return 1;
               return a.name.localeCompare(b.name);
             })
             .map(client => (
               <div
                 key={client._id}
-                className={`border rounded-lg p-4 hover:bg-gray-50 ${client.status !== 'active' ? 'bg-gray-100' : ''}`}
+                className={`border rounded-lg p-4 hover:bg-gray-50 ${!client.isActive ? 'bg-gray-100' : ''}`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -69,10 +69,10 @@ export function ClientManager() {
                     <p className="text-gray-600 text-sm mt-1">{client.address}</p>
                     <span
                       className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
-                        client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        client.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      {client.status === 'active' ? 'Actif' : 'Inactif'}
+                      {client.isActive ? 'Actif' : 'Inactif'}
                     </span>
                   </div>
                   <div className="flex gap-2">

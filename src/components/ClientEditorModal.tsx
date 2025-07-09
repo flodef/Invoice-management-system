@@ -15,7 +15,7 @@ interface ClientEditorModalProps {
     address: string;
     email: string;
     legalForm?: string;
-    status: string;
+    isActive: boolean;
   } | null;
 }
 
@@ -28,7 +28,7 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
     address: '',
     email: '',
     legalForm: 'SARL',
-    status: 'active',
+    isActive: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -40,10 +40,10 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
         address: client.address,
         email: client.email,
         legalForm: client.legalForm || 'SARL',
-        status: client.status,
+        isActive: client.isActive,
       });
     } else {
-      setFormData({ name: '', contactName: '', address: '', email: '', legalForm: 'SARL', status: 'active' });
+      setFormData({ name: '', contactName: '', address: '', email: '', legalForm: 'SARL', isActive: true });
     }
   }, [client]);
 
@@ -150,18 +150,6 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
               <option value="SARL">SARL</option>
               <option value="EURL">EURL</option>
               <option value="Micro-entrepreneur">Micro-entrepreneur</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-            <select
-              value={formData.status}
-              onChange={e => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isSubmitting}
-            >
-              <option value="active">Actif</option>
-              <option value="inactive">Inactif</option>
             </select>
           </div>
           <div className="flex justify-end space-x-3 pt-4 border-t">

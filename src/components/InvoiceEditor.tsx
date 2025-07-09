@@ -102,7 +102,7 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
         >
           <option value="">Sélectionner un client</option>
           {clients
-            .filter(client => client.status === 'active') // Filter for active clients
+            .filter(client => client.isActive) // Filter for active clients
             .map(client => (
               <option key={client._id} value={client._id}>
                 {client.name}

@@ -12,7 +12,7 @@ interface ServiceEditorModalProps {
     _id: Id<'services'>;
     label: string;
     defaultPrice: number;
-    isGlobal: boolean;
+    isActive: boolean;
   } | null;
 }
 
@@ -22,7 +22,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
   const [formData, setFormData] = useState({
     label: '',
     defaultPrice: 0,
-    isGlobal: false,
+    isActive: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,10 +31,10 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
       setFormData({
         label: service.label,
         defaultPrice: service.defaultPrice,
-        isGlobal: service.isGlobal,
+        isActive: service.isActive,
       });
     } else {
-      setFormData({ label: '', defaultPrice: 0, isGlobal: false });
+      setFormData({ label: '', defaultPrice: 0, isActive: true });
     }
   }, [service]);
 
@@ -110,6 +110,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
               />
             </div>
           </div>
+
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <button
               type="button"

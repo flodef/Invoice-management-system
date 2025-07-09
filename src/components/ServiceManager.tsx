@@ -63,9 +63,9 @@ export function ServiceManager() {
                         service.defaultPrice,
                       )}
                     </p>
-                    {service.isGlobal && (
+                    {service.isActive && (
                       <span className="inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 bg-blue-100 text-blue-800">
-                        Service Global
+                        Service Actif
                       </span>
                     )}
                   </div>
@@ -120,7 +120,7 @@ export function ServiceManager() {
                       <strong>Prix par défaut:</strong> {formatCurrency(service.defaultPrice)}
                     </p>
                     <p className="text-gray-700">
-                      <strong>Type:</strong> {service.isGlobal ? 'Service global' : 'Service local'}
+                      <strong>Statut:</strong> {service.isActive ? 'Actif' : 'Inactif'}
                     </p>
                   </div>
                 </div>
