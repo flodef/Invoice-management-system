@@ -49,6 +49,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
 
   // Get clients and services
   const clients = useQuery(api.invoices.getClients) || [];
+  const checkInvoiceExists = useMutation(api.invoices.checkInvoiceExists);
 
   // Upload invoice action
   const storeUploadedInvoice = useAction(api.uploadInvoice.storeUploadedInvoice);
@@ -66,27 +67,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     }
   }, [file]);
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      handleFileSelected(droppedFile);
-    }
-  };
-
-  const handleFileSelected = (selectedFile: File) => {
+  const handleFileSelected = async (selectedFile: File) => {
     // Check file type - accept PDF or images
     if (!(selectedFile.type === 'application/pdf')) {
       toast.error('Seulement les fichiers PDF sont acceptés');
@@ -110,6 +91,21 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
 
     const [, invoiceNum, clientName] = match;
 
+    try {
+      await checkInvoiceExists({ invoiceNumber: invoiceNum });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('DUPLICATE_INVOICE')) {
+        toast.error(`Une facture avec le numéro ${invoiceNum} existe déjà.`);
+      } else {
+        toast.error('An unexpected error occurred.');
+      }
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     // Find client by fuzzy matching
     const matchedClient = fuzzyMatch(clientName, clients);
     if (!matchedClient) {
@@ -127,12 +123,6 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     setInvoiceNumber(invoiceNum);
     setSelectedClientId(matchedClient._id);
     setFile(selectedFile);
-  };
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFileSelected(e.target.files[0]);
-    }
   };
 
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
@@ -198,7 +188,11 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     } catch (error) {
       console.error('Error uploading invoice:', error);
       toast.dismiss(loadingToastId);
-      toast.error("Erreur lors de l'importation de la facture");
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Erreur lors de l'importation de la facture");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -240,9 +234,18 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
               className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer ${
                 isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
               }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
+              onDragOver={e => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={e => {
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  void handleFileSelected(e.dataTransfer.files[0]);
+                }
+              }}
               onClick={() => fileInputRef.current?.click()}
             >
               <input
@@ -250,7 +253,11 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
                 type="file"
                 className="hidden"
                 accept="application/pdf"
-                onChange={handleFileInputChange}
+                onChange={e => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    void handleFileSelected(e.target.files[0]);
+                  }
+                }}
                 disabled={isSubmitting}
               />
               <IconUpload size={48} className="text-gray-400" />

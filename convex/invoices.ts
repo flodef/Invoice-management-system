@@ -502,3 +502,25 @@ export const updateInvoicePDF = mutation({
     });
   },
 });
+
+// Check if an invoice with the given number already exists
+export const checkInvoiceExists = mutation({
+  args: { invoiceNumber: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const existingInvoice = await ctx.db
+      .query('invoices')
+      .withIndex('by_user_and_number', q =>
+        q.eq('userId', userId).eq('invoiceNumber', args.invoiceNumber)
+      )
+      .first();
+
+    if (existingInvoice) {
+      throw new Error(`DUPLICATE_INVOICE`);
+    }
+
+    return false;
+  },
+});

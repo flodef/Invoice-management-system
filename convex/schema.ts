@@ -56,7 +56,8 @@ const applicationTables = {
   })
     .index('by_user', ['userId'])
     .index('by_user_and_date', ['userId', 'invoiceDate'])
-    .index('by_invoice_number', ['invoiceNumber']),
+    .index('by_invoice_number', ['invoiceNumber'])
+    .index('by_user_and_number', ['userId', 'invoiceNumber']),
 };
 
 export default defineSchema({
