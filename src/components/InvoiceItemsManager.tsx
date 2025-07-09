@@ -24,7 +24,7 @@ interface InvoiceItemsManagerProps {
 export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItemsManagerProps) {
   const services = useQuery(api.invoices.getServices) || [];
 
-  const addItem = () => {
+  const addItems = () => {
     if (services.length === 0) {
       toast.error("Veuillez d'abord ajouter des services");
       return;
@@ -36,6 +36,17 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
     if (!availableService) {
       toast.error('Tous les services ont déjà été ajoutés');
       return;
+    }
+
+    // Validate existing items before adding a new one
+    for (const item of items) {
+      const hasDiscount = (item.discount || 0) > 0;
+      const hasDiscountText = (item.discountText || '').trim() !== '';
+
+      if (hasDiscount && !hasDiscountText) {
+        toast.error('Veuillez ajouter une description pour la remise de l\'élément existant.');
+        return; // Prevent adding new item if existing has validation error
+      }
     }
 
     setItems([
@@ -55,6 +66,11 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
   const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
+
+    // Automatic clearing of discountText if discount is removed
+    if (field === 'discount' && (value === 0 || value === undefined)) {
+      newItems[index].discountText = '';
+    }
 
     if (field === 'serviceId') {
       const service = services.find(s => s._id === value);
@@ -99,7 +115,7 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
         {!isReadOnly && (
           <button
             type="button"
-            onClick={addItem}
+            onClick={addItems}
             className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={items.length >= services.length}
           >

@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import { Id } from '../../convex/_generated/dataModel';
 import { InvoiceItem, InvoiceItemsManager } from './InvoiceItemsManager';
+import { validateInvoiceItems } from '../lib/utils'; // Import the validation function
 
 type InvoiceIdType = Id<'invoices'> | 'new';
 
@@ -44,6 +45,11 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
     if (items.length === 0) {
       toast.error('Veuillez ajouter au moins un élément');
       return;
+    }
+
+    // Validate invoice items before saving
+    if (!validateInvoiceItems(items)) {
+      return; // Validation failed, error message already shown by validateInvoiceItems
     }
 
     try {

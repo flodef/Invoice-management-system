@@ -7,6 +7,7 @@ import { Doc, Id } from '../../convex/_generated/dataModel';
 import { formatCurrency } from '../utils/formatters';
 import { CustomDateInput } from './CustomDateInput';
 import { InvoiceItem, InvoiceItemsManager } from './InvoiceItemsManager';
+import { validateInvoiceItems } from '@/lib/utils';
 
 interface UploadInvoiceModalProps {
   isOpen: boolean;
@@ -154,6 +155,11 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
     if (items.length === 0) {
       toast.error('Veuillez ajouter au moins un article');
       return;
+    }
+
+    // Validate invoice items before saving
+    if (!validateInvoiceItems(items)) {
+      return; // Validation failed, error message already shown by validateInvoiceItems
     }
 
     setIsSubmitting(true);
