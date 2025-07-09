@@ -40,6 +40,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setIsSubmitting(true);
     try {
       await saveService({
@@ -69,7 +70,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
 
         <form onSubmit={e => void handleSubmit(e)} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="md:col-span-9">
+            <div className="md:col-span-10">
               <label className="block text-sm font-medium text-gray-700 mb-1">Libellé du service</label>
               <input
                 type="text"
@@ -80,17 +81,17 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
                 disabled={isSubmitting}
               />
             </div>
-            <div className="md:col-span-3">
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Prix HT</label>
               <input
                 type="number"
-                step="1"
-                min="0"
+                step="5"
+                min="5"
+                max="1000"
+                maxLength={4}
                 value={formData.defaultPrice}
                 onFocus={e => e.target.select()}
-                onChange={e =>
-                  setFormData({ ...formData, defaultPrice: Math.max(0, parseFloat(e.target.value) || 0) })
-                }
+                onChange={e => setFormData({ ...formData, defaultPrice: Math.max(0, parseFloat(e.target.value) || 0) })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 disabled={isSubmitting}
