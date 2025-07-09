@@ -1,36 +1,35 @@
-import { useState, useCallback } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { ProfileSettings } from "./ProfileSettings";
-import { ClientManager } from "./ClientManager";
-import { ServiceManager } from "./ServiceManager";
-import { InvoiceList } from "./InvoiceList";
-import { InvoiceEditor } from "./InvoiceEditor";
-import { StatisticsPage } from "./StatisticsPage";
+import { useState, useCallback } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { ProfileSettings } from './ProfileSettings';
+import { ClientManager } from './ClientManager';
+import { ServiceManager } from './ServiceManager';
+import { InvoiceList } from './InvoiceList';
+import { InvoiceEditor } from './InvoiceEditor';
+import { StatisticsPage } from './StatisticsPage';
 
-
-import { Id } from "../../convex/_generated/dataModel";
+import { Id } from '../../convex/_generated/dataModel';
 
 type InvoiceIdOrNew = Id<'invoices'> | 'new';
 
-type Tab = "invoices" | "clients" | "services" | "profile" | "statistics";
+type Tab = 'invoices' | 'clients' | 'services' | 'profile' | 'statistics';
 
 export function InvoiceManager() {
-  const [activeTab, setActiveTab] = useState<Tab>("invoices");
+  const [activeTab, setActiveTab] = useState<Tab>('invoices');
   const [editingInvoiceId, setEditingInvoiceId] = useState<InvoiceIdOrNew | null>(null);
-  
-  const userProfile = useQuery(api.invoices.getUserProfile);
+
+  const userProfile = useQuery(api.userProfile.getUserProfile);
 
   const handleEditInvoice = useCallback((id: InvoiceIdOrNew) => {
     setEditingInvoiceId(id);
   }, []);
 
   const tabs = [
-    { id: "invoices" as const, label: "Factures", icon: "📄" },
-    { id: "statistics" as const, label: "Statistiques", icon: "📊" },
-    { id: "clients" as const, label: "Clients", icon: "👥" },
-    { id: "services" as const, label: "Services", icon: "🛠️" },
-    { id: "profile" as const, label: "Profil", icon: "⚙️" },
+    { id: 'invoices' as const, label: 'Factures', icon: '📄' },
+    { id: 'statistics' as const, label: 'Statistiques', icon: '📊' },
+    { id: 'clients' as const, label: 'Clients', icon: '👥' },
+    { id: 'services' as const, label: 'Services', icon: '🛠️' },
+    { id: 'profile' as const, label: 'Profil', icon: '⚙️' },
   ];
 
   // Show profile setup if not configured
@@ -49,12 +48,7 @@ export function InvoiceManager() {
   }
 
   if (editingInvoiceId) {
-    return (
-      <InvoiceEditor
-        invoiceId={editingInvoiceId}
-        onClose={() => setEditingInvoiceId(null)}
-      />
-    );
+    return <InvoiceEditor invoiceId={editingInvoiceId} onClose={() => setEditingInvoiceId(null)} />;
   }
 
   return (
@@ -62,14 +56,14 @@ export function InvoiceManager() {
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="flex overflow-x-auto">
-          {tabs.map((tab) => (
+          {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-6 py-4 font-medium whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? "border-blue-500 text-blue-600 bg-blue-50"
-                  : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  ? 'border-blue-500 text-blue-600 bg-blue-50'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
               <span>{tab.icon}</span>
@@ -81,13 +75,11 @@ export function InvoiceManager() {
 
       {/* Tab Content */}
       <div className="bg-white rounded-lg shadow-sm border">
-        {activeTab === "invoices" && (
-          <InvoiceList onEditInvoice={handleEditInvoice} />
-        )}
-        {activeTab === "statistics" && <StatisticsPage />}
-        {activeTab === "clients" && <ClientManager />}
-        {activeTab === "services" && <ServiceManager />}
-        {activeTab === "profile" && <ProfileSettings />}
+        {activeTab === 'invoices' && <InvoiceList onEditInvoice={handleEditInvoice} />}
+        {activeTab === 'statistics' && <StatisticsPage />}
+        {activeTab === 'clients' && <ClientManager />}
+        {activeTab === 'services' && <ServiceManager />}
+        {activeTab === 'profile' && <ProfileSettings />}
       </div>
     </div>
   );

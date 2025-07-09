@@ -4,8 +4,8 @@ import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 
 export function ProfileSettings() {
-  const userProfile = useQuery(api.invoices.getUserProfile);
-  const updateProfile = useMutation(api.invoices.updateUserProfile);
+  const userProfile = useQuery(api.userProfile.getUserProfile);
+  const updateProfile = useMutation(api.userProfile.updateUserProfile);
 
   const [formData, setFormData] = useState({
     name: '',

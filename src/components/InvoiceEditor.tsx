@@ -16,7 +16,7 @@ interface InvoiceEditorProps {
 export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
   const isNew = invoiceId === 'new';
   const invoice = useQuery(api.invoices.getInvoiceById, isNew ? 'skip' : { id: invoiceId });
-  const clients = useQuery(api.invoices.getClients) || [];
+  const clients = useQuery(api.clients.getClients) || [];
 
   const createInvoice = useMutation(api.invoices.createInvoice);
   const updateInvoice = useMutation(api.invoices.updateInvoice);

@@ -7,10 +7,10 @@ import { IconEdit, IconTrash } from '@tabler/icons-react';
 import { ClientEditorModal } from './ClientEditorModal';
 
 export function ClientManager() {
-  const clients = useQuery(api.invoices.getClients) || [];
-  const _saveClient = useMutation(api.invoices.saveClient); // This mutation is used in ClientEditorModal.tsx
-  const deleteClient = useMutation(api.invoices.deleteClient);
-  const toggleClientStatus = useMutation(api.invoices.toggleClientStatus);
+  const clients = useQuery(api.clients.getClients) || [];
+  const _saveClient = useMutation(api.clients.saveClient); // This mutation is used in ClientEditorModal.tsx
+  const deleteClient = useMutation(api.clients.deleteClient);
+  const toggleClientStatus = useMutation(api.clients.toggleClientStatus);
 
   const [showClientModal, setShowClientModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Doc<'clients'> | null>(null);

@@ -7,10 +7,10 @@ import { IconEdit, IconTrash } from '@tabler/icons-react';
 import { ServiceEditorModal } from './ServiceEditorModal';
 
 export function ServiceManager() {
-  const services = useQuery(api.invoices.getServices) || [];
-  const _saveService = useMutation(api.invoices.saveService); // This mutation is used in ServiceEditorModal.tsx
-  const deleteService = useMutation(api.invoices.deleteService);
-  const toggleServiceStatus = useMutation(api.invoices.toggleServiceStatus);
+  const services = useQuery(api.services.getServices) || [];
+  const _saveService = useMutation(api.services.saveService); // This mutation is used in ServiceEditorModal.tsx
+  const deleteService = useMutation(api.services.deleteService);
+  const toggleServiceStatus = useMutation(api.services.toggleServiceStatus);
 
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<Doc<'services'> | null>(null);

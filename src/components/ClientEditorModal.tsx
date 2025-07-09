@@ -20,7 +20,7 @@ interface ClientEditorModalProps {
 }
 
 export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModalProps) {
-  const saveClient = useMutation(api.invoices.saveClient);
+  const saveClient = useMutation(api.clients.saveClient);
 
   const [formData, setFormData] = useState({
     name: '',

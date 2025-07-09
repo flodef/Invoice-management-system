@@ -49,7 +49,7 @@ export function UploadInvoiceModal({ isOpen, onClose, onSuccess }: UploadInvoice
   const [items, setItems] = useState<InvoiceItem[]>([]);
 
   // Get clients and services
-  const clients = useQuery(api.invoices.getClients) || [];
+  const clients = useQuery(api.clients.getClients) || [];
   const checkInvoiceExists = useMutation(api.invoices.checkInvoiceExists);
 
   // Upload invoice action

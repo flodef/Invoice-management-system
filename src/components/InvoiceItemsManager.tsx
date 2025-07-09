@@ -22,7 +22,7 @@ interface InvoiceItemsManagerProps {
 }
 
 export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItemsManagerProps) {
-  const services = useQuery(api.invoices.getServices) || [];
+  const services = useQuery(api.services.getServices) || [];
   const activeServices = services.filter(s => s.isActive);
 
   const addItems = () => {

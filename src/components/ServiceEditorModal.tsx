@@ -17,7 +17,7 @@ interface ServiceEditorModalProps {
 }
 
 export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorModalProps) {
-  const saveService = useMutation(api.invoices.saveService);
+  const saveService = useMutation(api.services.saveService);
 
   const [formData, setFormData] = useState({
     label: '',
