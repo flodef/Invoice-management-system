@@ -23,18 +23,19 @@ interface InvoiceItemsManagerProps {
 
 export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItemsManagerProps) {
   const services = useQuery(api.invoices.getServices) || [];
+  const activeServices = services.filter(s => s.isActive);
 
   const addItems = () => {
-    if (services.length === 0) {
-      toast.error("Veuillez d'abord ajouter des services");
+    if (activeServices.length === 0) {
+      toast.error("Veuillez d'abord ajouter des services actifs");
       return;
     }
 
     // Find the first service that isn't already used in other items
-    const availableService = services.find(service => !items.some(item => item.serviceId === service._id));
+    const availableService = activeServices.find(service => !items.some(item => item.serviceId === service._id));
 
     if (!availableService) {
-      toast.error('Tous les services ont déjà été ajoutés');
+      toast.error('Tous les services actifs ont déjà été ajoutés');
       return;
     }
 
@@ -44,7 +45,7 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
       const hasDiscountText = (item.discountText || '').trim() !== '';
 
       if (hasDiscount && !hasDiscountText) {
-        toast.error('Veuillez ajouter une description pour la remise de l\'élément existant.');
+        toast.error("Veuillez ajouter une description pour la remise de l'élément existant.");
         return; // Prevent adding new item if existing has validation error
       }
     }
@@ -121,9 +122,9 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
             type="button"
             onClick={addItems}
             className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={items.length >= services.length}
+            disabled={items.length >= activeServices.length}
           >
-            {items.length >= services.length ? 'Tous les services ajoutés' : 'Ajouter un élément'}
+            {items.length >= activeServices.length ? 'Aucun service actif disponible' : 'Ajouter un service'}
           </button>
         )}
       </div>
@@ -140,7 +141,7 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
                   disabled={isReadOnly}
                 >
-                  {services
+                  {activeServices
                     .filter(
                       service =>
                         service._id === item.serviceId ||

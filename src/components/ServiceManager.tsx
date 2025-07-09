@@ -52,9 +52,16 @@ export function ServiceManager() {
           <p className="text-gray-500 text-center py-8">Aucun service pour le moment. Ajoutez votre premier service!</p>
         ) : (
           services
-            .sort((a, b) => a.label.localeCompare(b.label))
+            .sort((a, b) => {
+              if (a.isActive && !b.isActive) return -1;
+              if (!a.isActive && b.isActive) return 1;
+              return a.label.localeCompare(b.label);
+            })
             .map(service => (
-              <div key={service._id} className="border rounded-lg p-4 hover:bg-gray-50">
+              <div
+                key={service._id}
+                className={`border rounded-lg p-4 hover:bg-gray-50 ${!service.isActive ? 'bg-gray-100' : ''}`}
+              >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{service.label}</h3>
@@ -63,11 +70,13 @@ export function ServiceManager() {
                         service.defaultPrice,
                       )}
                     </p>
-                    {service.isActive && (
-                      <span className="inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 bg-blue-100 text-blue-800">
-                        Service Actif
-                      </span>
-                    )}
+                    <span
+                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                        service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {service.isActive ? 'Actif' : 'Inactif'}
+                    </span>
                   </div>
                   <div className="flex gap-2">
                     <button
