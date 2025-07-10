@@ -11,6 +11,7 @@ import {
   IconEye,
   IconPlus,
   IconUpload,
+  IconX,
 } from '@tabler/icons-react';
 import { UploadInvoiceModal } from './UploadInvoiceModal';
 import { InvoiceEditorModal } from './InvoiceEditorModal';
@@ -507,10 +508,26 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                     {/* Month Header */}
                     <button
                       onClick={() => toggleMonth(monthKey)}
-                      className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between text-left transition-colors"
+                      className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between text-left transition-colors max-h-20 truncate overflow-hidden"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-lg text-gray-800">{monthLabel}</span>
+                        <span className="font-semibold text-lg text-gray-800">
+                          <span className="hidden sm:inline">{monthLabel}</span>
+                          <span className="sm:hidden">
+                            {(() => {
+                              // Extract month and year from the label (e.g., "septembre 2025" → "sept 25")
+                              const parts = monthLabel.split(' ');
+                              if (parts.length === 2) {
+                                const month = parts[0];
+                                const year = parts[1].substring(2); // Get last 2 digits
+                                // Abbreviate month (first 4 chars or less)
+                                const abbrevMonth = month.substring(0, 4).toLowerCase();
+                                return `${abbrevMonth} ${year}`;
+                              }
+                              return monthLabel; // Fallback to full label
+                            })()}
+                          </span>
+                        </span>
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium whitespace-nowrap">
                           {count} facture{count > 1 ? 's' : ''}
                         </span>
@@ -719,20 +736,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                           className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
                           title="Envoyer par email"
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                            />
-                          </svg>
+                          <IconMail size={20} stroke={1.5} />
                           <span className="sm:inline hidden">Envoyer par email</span>
                         </button>
                       )}
@@ -748,20 +752,12 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                   );
                 })()}
                 <button onClick={handleClosePdfViewer} className="text-gray-500 hover:text-gray-700">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <IconX size={24} stroke={1.5} />
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto bg-gray-100">
-              <iframe src={pdfUrl} className="w-full h-full" title="PDF Viewer" />
+            <div className="flex-1 overflow-auto bg-gray-100 min-h-[60vh] sm:min-h-0">
+              <iframe src={pdfUrl} className="w-full h-full min-h-[60vh] sm:min-h-0" title="PDF Viewer" />
             </div>
           </div>
         </div>
