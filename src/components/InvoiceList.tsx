@@ -13,6 +13,7 @@ import {
   IconUpload,
   IconX,
 } from '@tabler/icons-react';
+import { PDFViewer } from './PDFViewer';
 import { UploadInvoiceModal } from './UploadInvoiceModal';
 import { InvoiceEditorModal } from './InvoiceEditorModal';
 
@@ -756,8 +757,8 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto bg-gray-100 min-h-[60vh] sm:min-h-0">
-              <iframe src={pdfUrl} className="w-full h-full min-h-[60vh] sm:min-h-0" title="PDF Viewer" />
+            <div className="flex-1 overflow-hidden bg-gray-100 min-h-[60vh] sm:min-h-0">
+              <PDFViewer pdfUrl={pdfUrl} />
             </div>
           </div>
         </div>
