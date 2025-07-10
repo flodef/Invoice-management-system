@@ -1,11 +1,11 @@
 /**
  * Format a number as currency (EUR)
  */
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, minimumFractionDigits = 2): string {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: 2
+    minimumFractionDigits,
   }).format(amount);
 }
 

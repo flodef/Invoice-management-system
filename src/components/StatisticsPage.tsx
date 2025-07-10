@@ -125,20 +125,9 @@ export function StatisticsPage() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: 'top' as const,
-          labels: {
-            font: {
-              size: 14,
-              family: 'system-ui',
-            },
-          },
-        },
-        title: {
-          display: false,
-        },
+        legend: { display: false },
+        title: { display: false },
         tooltip: {
-          // Use the built-in tooltip functionality
           callbacks: {
             label: context => {
               return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
@@ -151,7 +140,7 @@ export function StatisticsPage() {
           beginAtZero: true,
           ticks: {
             callback: value => {
-              return formatCurrency(Number(value));
+              return formatCurrency(Number(value), 0);
             },
           },
         },
@@ -160,55 +149,50 @@ export function StatisticsPage() {
   }, []);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
-          <IconChartLine size={28} stroke={1.5} className="text-blue-600" />
           <h2 className="text-2xl font-bold">Statistiques</h2>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-xl font-semibold mb-6">Chiffre d'affaires mensuel</h3>
+      {monthlyData.length > 0 ? (
+        <>
+          <div className="h-80 mb-4">
+            <Line data={chartData} options={options} />
+          </div>
 
-        {monthlyData.length > 0 ? (
-          <>
-            <div className="h-80 mb-4">
-              <Line data={chartData} options={options} />
-            </div>
-
-            <div className="mt-8">
-              <h4 className="font-semibold mb-2">Résumé</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="text-sm text-gray-600">Total sur la période</div>
-                  <div className="text-xl font-bold text-blue-800">
-                    {formatCurrency(monthlyData.reduce((sum, item) => sum + item.total, 0))}
-                  </div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="text-sm text-gray-600">Moyenne mensuelle</div>
-                  <div className="text-xl font-bold text-blue-800">
-                    {formatCurrency(monthlyData.reduce((sum, item) => sum + item.total, 0) / monthlyData.length)}
-                  </div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="text-sm text-gray-600">Dernier trimestre</div>
-                  <div className="text-xl font-bold text-blue-800">{formatCurrency(lastQuarterTotal)}</div>
+          <div className="mt-8">
+            <h4 className="font-semibold mb-2">Résumé</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="text-sm text-gray-600">Total sur la période</div>
+                <div className="text-xl font-bold text-blue-800">
+                  {formatCurrency(monthlyData.reduce((sum, item) => sum + item.total, 0))}
                 </div>
               </div>
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="text-sm text-gray-600">Moyenne mensuelle</div>
+                <div className="text-xl font-bold text-blue-800">
+                  {formatCurrency(monthlyData.reduce((sum, item) => sum + item.total, 0) / monthlyData.length)}
+                </div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="text-sm text-gray-600">Dernier trimestre</div>
+                <div className="text-xl font-bold text-blue-800">{formatCurrency(lastQuarterTotal)}</div>
+              </div>
             </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-10">
-            <div className="text-gray-400 mb-2">
-              <IconChartLine size={48} stroke={1} />
-            </div>
-            <p className="text-gray-500">Pas de données disponibles pour afficher le graphique.</p>
-            <p className="text-gray-500 text-sm mt-1">Créez des factures pour voir les statistiques.</p>
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-10">
+          <div className="text-gray-400 mb-2">
+            <IconChartLine size={48} stroke={1} />
+          </div>
+          <p className="text-gray-500">Pas de données disponibles pour afficher le graphique.</p>
+          <p className="text-gray-500 text-sm mt-1">Créez des factures pour voir les statistiques.</p>
+        </div>
+      )}
     </div>
   );
 }

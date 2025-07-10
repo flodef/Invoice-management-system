@@ -447,7 +447,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Factures</h2>
         <div className="flex gap-2">
@@ -455,17 +455,19 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
             <button
               onClick={() => void handleDuplicatePreviousMonth()}
               className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors flex items-center gap-1"
+              title="Dupliquer le mois précédent"
             >
               <IconCopy size={20} stroke={1.5} />
-              Dupliquer le mois précédent
+              <span className="sm:inline hidden">Dupliquer le mois précédent</span>
             </button>
           )}
           <button
             onClick={() => setIsUploadModalOpen(true)}
             className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
+            title="Importer une facture"
           >
             <IconUpload size={20} stroke={1.5} />
-            Importer une facture
+            <span className="sm:inline hidden">Importer une facture</span>
           </button>
           <button
             onClick={() => {
@@ -473,9 +475,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
               setIsEditorModalOpen(true);
             }}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
+            title="Créer une facture"
           >
             <IconPlus size={20} stroke={1.5} />
-            Créer une facture
+            <span className="sm:inline hidden">Créer une facture</span>
           </button>
         </div>
       </div>
@@ -508,10 +511,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                     >
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-lg text-gray-800">{monthLabel}</span>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium whitespace-nowrap">
                           {count} facture{count > 1 ? 's' : ''}
                         </span>
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium">
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium whitespace-nowrap">
                           {formatCurrency(totalAmount)}
                         </span>
                         {unpaidCount > 0 && (
@@ -537,7 +540,83 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                           const isDraft = invoice.status === 'draft';
                           return (
                             <div key={invoice._id} className="p-4 hover:bg-gray-50">
-                              <div className="flex flex-wrap justify-between items-center">
+                              {/* Mobile: Stack layout - Content on top, buttons below */}
+                              <div className="block sm:hidden">
+                                <div className="mb-3">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <p className="font-semibold truncate flex-1">{invoice.clientName}</p>
+                                    <span
+                                      onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
+                                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
+                                      } ${getStatusColor(invoice.status)}`}
+                                    >
+                                      {getStatusLabel(invoice.status)}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
+                                      <p className="text-gray-500 text-xs">
+                                        {formatDate(invoice.invoiceDate)} → {formatDate(invoice.paymentDate)}
+                                      </p>
+                                    </div>
+                                    <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
+                                  </div>
+                                </div>
+
+                                {/* Action buttons below on mobile */}
+                                <div className="flex justify-center gap-3 border-t pt-2 mt-2">
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => {
+                                        setInvoiceToEditId(invoice._id);
+                                        setIsEditorModalOpen(true);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
+                                      title="Modifier"
+                                    >
+                                      <IconEdit size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => setShowEmailConfirm(invoice._id)}
+                                      className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
+                                      title="Envoyer par email"
+                                    >
+                                      <IconMail size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => void handleViewPDF(invoice._id)}
+                                    className="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-50"
+                                    title="Visualiser PDF"
+                                  >
+                                    <IconEye size={20} stroke={1.5} />
+                                  </button>
+                                  <button
+                                    onClick={() => void handleDuplicate(invoice._id)}
+                                    className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
+                                    title="Dupliquer"
+                                  >
+                                    <IconCopy size={20} stroke={1.5} />
+                                  </button>
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => setShowDeleteConfirm(invoice._id)}
+                                      className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
+                                      title="Supprimer"
+                                    >
+                                      <IconTrash size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Desktop: Original layout with flex */}
+                              <div className="hidden sm:flex flex-wrap justify-between items-center">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                                     <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
@@ -547,18 +626,20 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                     </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                                  <span
-                                    onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
-                                    } ${getStatusColor(invoice.status)}`}
-                                  >
-                                    {getStatusLabel(invoice.status)}
-                                  </span>
-                                  <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
+                                <div className="flex items-center flex-wrap justify-end gap-4">
+                                  <div className="flex items-center gap-2 px-4">
+                                    <span
+                                      onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
+                                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
+                                      } ${getStatusColor(invoice.status)}`}
+                                    >
+                                      {getStatusLabel(invoice.status)}
+                                    </span>
+                                    <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
+                                  </div>
                                 </div>
-                                <div className="flex gap-2 ml-4">
+                                <div className="flex gap-2">
                                   {isDraft && (
                                     <button
                                       onClick={() => {
@@ -636,6 +717,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                         <button
                           onClick={() => setShowEmailConfirm(showPdfViewer)}
                           className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                          title="Envoyer par email"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -651,15 +733,16 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                               d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                             />
                           </svg>
-                          Envoyer par email
+                          <span className="sm:inline hidden">Envoyer par email</span>
                         </button>
                       )}
                       <button
                         onClick={() => void handleDownloadPDF(showPdfViewer)}
                         className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
+                        title="Télécharger PDF"
                       >
                         <IconFileDownload size={20} stroke={1.5} />
-                        Télécharger PDF
+                        <span className="sm:inline hidden">Télécharger PDF</span>
                       </button>
                     </>
                   );
@@ -699,7 +782,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
           return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold mb-4">Confirmer l'envoi par email</h3>
                 <div className="mb-4">
                   <p className="text-gray-700 mb-2">
@@ -768,7 +851,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
           return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
                 <div className="mb-4">
                   <p className="text-gray-700 mb-4">
@@ -820,7 +903,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
           return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold mb-4 text-orange-600">Dupliquer la facture</h3>
                 <div className="mb-4">
                   <p className="text-gray-700 mb-4">

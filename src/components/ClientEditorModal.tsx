@@ -75,7 +75,7 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b">
           <h2 className="text-2xl font-bold">{client ? 'Modifier le client' : 'Ajouter un nouveau client'}</h2>
           <button
             onClick={() => {
@@ -144,7 +144,7 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
             <select
               value={formData.legalForm}
               onChange={e => setFormData({ ...formData, legalForm: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
               disabled={isSubmitting}
             >
               <option value="SARL">SARL</option>

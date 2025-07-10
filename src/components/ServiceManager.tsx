@@ -46,7 +46,7 @@ export function ServiceManager() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Services</h2>
         <button
@@ -126,7 +126,7 @@ export function ServiceManager() {
 
           return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
                 <div className="mb-4">
                   <p className="text-gray-700 mb-4">

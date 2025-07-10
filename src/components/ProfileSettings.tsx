@@ -42,7 +42,7 @@ export function ProfileSettings() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h2 className="text-2xl font-bold mb-6">Paramètres du profil</h2>
 
       <form onSubmit={e => void handleSubmit(e)} className="space-y-6">

@@ -46,7 +46,7 @@ export function ClientManager() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Clients</h2>
         <button
@@ -75,8 +75,14 @@ export function ClientManager() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{client.name}</h3>
-                    <p className="text-gray-600">{client.email}</p>
-                    <p className="text-gray-600 text-sm mt-1">{client.address}</p>
+                    <a
+                      href={`mailto:${client.email}`}
+                      className="text-gray-600 hover:text-blue-600 transition-colors truncate block max-w-[200px] sm:max-w-xs md:max-w-sm"
+                      title={client.email}
+                    >
+                      {client.email}
+                    </a>
+                    <p className="text-gray-600 text-sm mt-1 break-words overflow-hidden">{client.address}</p>
                     <span
                       onClick={() => void handleToggleStatus(client._id, client.isActive)}
                       className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 cursor-pointer ${
@@ -116,7 +122,7 @@ export function ClientManager() {
 
           return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4">
                 <h3 className="text-lg font-semibold mb-4 text-red-600">Confirmer la suppression</h3>
                 <div className="mb-4">
                   <p className="text-gray-700 mb-4">
