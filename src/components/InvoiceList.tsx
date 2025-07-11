@@ -705,7 +705,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                 {(() => {
                   // Check if the current invoice is a draft (status !== 'sent')
                   const currentInvoice = invoices.find(inv => inv._id === showPdfViewer);
-                  const isDraft = currentInvoice?.status !== 'sent';
+                  const isDraft = currentInvoice?.status === 'draft';
 
                   return (
                     <>
