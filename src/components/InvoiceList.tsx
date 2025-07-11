@@ -18,7 +18,6 @@ import { UploadInvoiceModal } from './UploadInvoiceModal';
 
 import { formatMonthLabel } from '@/utils/formatters';
 import { Id } from '../../convex/_generated/dataModel';
-import { PDFViewer } from './PDFViewer';
 
 type InvoiceIdOrNew = Id<'invoices'> | 'new';
 
@@ -737,7 +736,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
               </div>
             </div>
             <div className="flex-1 overflow-hidden bg-gray-100 min-h-[60vh] sm:min-h-0">
-              <PDFViewer pdfUrl={pdfUrl} />
+              <iframe src={pdfUrl} className="w-full h-full min-h-[60vh] sm:min-h-0" title="PDF Viewer" />
             </div>
           </div>
         </div>
