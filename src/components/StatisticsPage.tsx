@@ -14,7 +14,7 @@ import { useQuery } from 'convex/react';
 import { useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
 import { api } from '../../convex/_generated/api';
-import { formatCurrency, formatMonthYear } from '../utils/formatters';
+import { formatCurrency, formatMonthYear, formatMonthLabel } from '../utils/formatters';
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -77,8 +77,8 @@ export function StatisticsPage() {
   };
 
   // Memoize chart options with minimal event handling
-  const lastQuarterTotal = useMemo(() => {
-    if (!monthlyData.length) return 0;
+  const lastQuarterData = useMemo(() => {
+    if (!monthlyData.length) return { total: 0, months: [] };
 
     const now = new Date();
     const currentMonth = now.getMonth(); // 0-indexed
@@ -117,9 +117,15 @@ export function StatisticsPage() {
     }
 
     const filteredData = monthlyData.filter(item => previousQuarterMonths.includes(item.monthKey));
+    const total = filteredData.reduce((sum, item) => sum + item.total, 0);
 
-    return filteredData.reduce((sum, item) => sum + item.total, 0);
+    // Generate month labels for display
+    const monthLabels = previousQuarterMonths.map(monthKey => formatMonthLabel(monthKey, 'short', 'none'));
+
+    return { total, months: monthLabels };
   }, [monthlyData]);
+
+  const lastQuarterTotal = lastQuarterData.total;
   const options = useMemo<ChartOptions<'line'>>(() => {
     return {
       responsive: true,
@@ -178,7 +184,9 @@ export function StatisticsPage() {
                 </div>
               </div>
               <div className="bg-gray-50 p-4 rounded-md">
-                <div className="text-sm text-gray-600">Dernier trimestre</div>
+                <div className="text-sm text-gray-600">
+                  Dernier trimestre {lastQuarterData.months.length > 0 && `(${lastQuarterData.months.join(', ')})`}
+                </div>
                 <div className="text-xl font-bold text-blue-800">{formatCurrency(lastQuarterTotal)}</div>
               </div>
             </div>

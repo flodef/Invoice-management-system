@@ -28,8 +28,12 @@ export function formatMonthYear(date: Date | number): string {
   });
 }
 
-export function formatMonthLabel(monthKey: string, format: 'long' | 'short' = 'long') {
+export function formatMonthLabel(
+  monthKey: string,
+  format: 'long' | 'short' = 'long',
+  yearFormat: 'numeric' | '2-digit' | 'none' = 'numeric',
+) {
   const [year, month] = monthKey.split('-');
   const date = new Date(parseInt(year), parseInt(month) - 1);
-  return date.toLocaleDateString('fr-FR', { year: 'numeric', month: format });
+  return date.toLocaleDateString('fr-FR', { year: yearFormat === 'none' ? undefined : yearFormat, month: format });
 }
