@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import { Id } from '../../convex/_generated/dataModel';
@@ -20,6 +20,7 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
 
   const createInvoice = useMutation(api.invoices.createInvoice);
   const updateInvoice = useMutation(api.invoices.updateInvoice);
+  const generateInvoicePDF = useAction(api.pdf.generateInvoicePDF);
 
   const [selectedClientId, setSelectedClientId] = useState<Id<'clients'> | ''>('');
   const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -65,6 +66,8 @@ export function InvoiceEditor({ invoiceId, onClose }: InvoiceEditorProps) {
           clientId: selectedClientId,
           items,
         });
+        // Regenerate PDF after successful update
+        await generateInvoicePDF({ invoiceId });
         toast.success('Facture mise à jour!');
       }
       onClose();
