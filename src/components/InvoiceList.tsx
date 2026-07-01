@@ -518,7 +518,9 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                           {count} facture{count > 1 ? 's' : ''}
                         </span>
                         <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium whitespace-nowrap">
-                          {formatCurrency(paidAmount)} / {formatCurrency(totalAmount)}
+                          {paidAmount === totalAmount
+                            ? formatCurrency(totalAmount)
+                            : `${formatCurrency(paidAmount)} / ${formatCurrency(totalAmount)}`}
                         </span>
                         {unpaidCount > 0 && (
                           <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full font-medium">
