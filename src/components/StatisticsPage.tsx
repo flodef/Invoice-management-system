@@ -36,12 +36,12 @@ export function StatisticsPage() {
 
     const monthMap = new Map<string, number>();
 
-    // Sort invoices by date (oldest first)
-    const sortedInvoices = [...paidInvoices].sort((a, b) => a.invoiceDate - b.invoiceDate);
+    // Sort invoices by payment date (oldest first) - use paymentDate for paid invoices
+    const sortedInvoices = [...paidInvoices].sort((a, b) => a.paymentDate - b.paymentDate);
 
-    // Group by month and sum totals
+    // Group by month and sum totals based on payment date
     sortedInvoices.forEach(invoice => {
-      const date = new Date(invoice.invoiceDate);
+      const date = new Date(invoice.paymentDate);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
 
       const currentAmount = monthMap.get(monthKey) || 0;

@@ -326,6 +326,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     return sortedMonths.map(monthKey => {
       // Calculate total amount for the month
       const totalAmount = groups[monthKey].reduce((sum, invoice) => sum + invoice.totalAmount, 0);
+      // Calculate paid amount for the month
+      const paidAmount = groups[monthKey]
+        .filter(invoice => invoice.status === 'paid')
+        .reduce((sum, invoice) => sum + invoice.totalAmount, 0);
       const unpaidCount = groups[monthKey].filter(
         invoice => invoice.status === 'sent' && new Date(invoice.paymentDate) < new Date(),
       ).length;
@@ -335,6 +339,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
         invoices: groups[monthKey].sort((a, b) => b.invoiceDate - a.invoiceDate), // Sort invoices within month
         count: groups[monthKey].length,
         totalAmount: totalAmount,
+        paidAmount: paidAmount,
         unpaidCount: unpaidCount,
       };
     });
@@ -494,203 +499,205 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
           <p className="text-gray-500 text-center py-8">Aucune facture pour le moment. Créez votre première facture!</p>
         ) : (
           <div className="space-y-4">
-            {groupedInvoices.map(({ monthKey, invoices: monthInvoices, count, totalAmount, unpaidCount }) => {
-              const isOpen = openMonths.has(monthKey);
-              return (
-                <div key={monthKey} className="border rounded-lg overflow-hidden">
-                  {/* Month Header */}
-                  <button
-                    onClick={() => toggleMonth(monthKey)}
-                    className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between text-left transition-colors max-h-20 truncate overflow-hidden"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-lg text-gray-800">
-                        <span className="hidden sm:inline">{formatMonthLabel(monthKey)}</span>
-                        <span className="sm:hidden">{formatMonthLabel(monthKey, 'short')}</span>
-                      </span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium whitespace-nowrap">
-                        {count} facture{count > 1 ? 's' : ''}
-                      </span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium whitespace-nowrap">
-                        {formatCurrency(totalAmount)}
-                      </span>
-                      {unpaidCount > 0 && (
-                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full font-medium">
-                          {unpaidCount} impayée{unpaidCount > 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
-                    <svg
-                      className={`w-5 h-5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+            {groupedInvoices.map(
+              ({ monthKey, invoices: monthInvoices, count, totalAmount, paidAmount, unpaidCount }) => {
+                const isOpen = openMonths.has(monthKey);
+                return (
+                  <div key={monthKey} className="border rounded-lg overflow-hidden">
+                    {/* Month Header */}
+                    <button
+                      onClick={() => toggleMonth(monthKey)}
+                      className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between text-left transition-colors max-h-20 truncate overflow-hidden"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-lg text-gray-800">
+                          <span className="hidden sm:inline">{formatMonthLabel(monthKey)}</span>
+                          <span className="sm:hidden">{formatMonthLabel(monthKey, 'short')}</span>
+                        </span>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium whitespace-nowrap">
+                          {count} facture{count > 1 ? 's' : ''}
+                        </span>
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium whitespace-nowrap">
+                          {formatCurrency(paidAmount)} / {formatCurrency(totalAmount)}
+                        </span>
+                        {unpaidCount > 0 && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full font-medium">
+                            {unpaidCount} impayée{unpaidCount > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <svg
+                        className={`w-5 h-5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
 
-                  {/* Month Content */}
-                  {isOpen && (
-                    <div className="divide-y divide-gray-200">
-                      {monthInvoices.map(invoice => {
-                        const isDraft = invoice.status === 'draft';
-                        return (
-                          <div key={invoice._id} className="p-4 hover:bg-gray-50">
-                            {/* Mobile: Stack layout - Content on top, buttons below */}
-                            <div className="block sm:hidden">
-                              <div className="mb-3">
-                                <div className="flex justify-between items-center mb-2">
-                                  <p className="font-semibold truncate flex-1">{invoice.clientName}</p>
-                                  <span
-                                    onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
-                                    } ${getStatusColor(invoice.status)}`}
-                                  >
-                                    {getStatusLabel(invoice.status)}
-                                  </span>
+                    {/* Month Content */}
+                    {isOpen && (
+                      <div className="divide-y divide-gray-200">
+                        {monthInvoices.map(invoice => {
+                          const isDraft = invoice.status === 'draft';
+                          return (
+                            <div key={invoice._id} className="p-4 hover:bg-gray-50">
+                              {/* Mobile: Stack layout - Content on top, buttons below */}
+                              <div className="block sm:hidden">
+                                <div className="mb-3">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <p className="font-semibold truncate flex-1">{invoice.clientName}</p>
+                                    <span
+                                      onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
+                                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
+                                      } ${getStatusColor(invoice.status)}`}
+                                    >
+                                      {getStatusLabel(invoice.status)}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
+                                      <p className="text-gray-500 text-xs">
+                                        {formatDate(invoice.invoiceDate)} → {formatDate(invoice.paymentDate)}
+                                      </p>
+                                    </div>
+                                    <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
+                                  </div>
                                 </div>
 
-                                <div className="flex justify-between items-center">
-                                  <div>
-                                    <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
-                                    <p className="text-gray-500 text-xs">
+                                {/* Action buttons below on mobile */}
+                                <div className="flex justify-center gap-3 border-t pt-2 mt-2">
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => {
+                                        setInvoiceToEditId(invoice._id);
+                                        setIsEditorModalOpen(true);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
+                                      title="Modifier"
+                                    >
+                                      <IconEdit size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => setShowEmailConfirm(invoice._id)}
+                                      className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
+                                      title="Envoyer par email"
+                                    >
+                                      <IconMail size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => void handleViewPDF(invoice._id)}
+                                    className="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-50"
+                                    title="Visualiser PDF"
+                                  >
+                                    <IconEye size={20} stroke={1.5} />
+                                  </button>
+                                  <button
+                                    onClick={() => void handleDuplicate(invoice._id)}
+                                    className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
+                                    title="Dupliquer"
+                                  >
+                                    <IconCopy size={20} stroke={1.5} />
+                                  </button>
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => setShowDeleteConfirm(invoice._id)}
+                                      className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
+                                      title="Supprimer"
+                                    >
+                                      <IconTrash size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Desktop: Original layout with flex */}
+                              <div className="hidden sm:flex flex-wrap justify-between items-center">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                    <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
+                                    <p className="text-gray-600">#{invoice.invoiceNumber}</p>
+                                    <p className="text-gray-500 text-sm">
                                       {formatDate(invoice.invoiceDate)} → {formatDate(invoice.paymentDate)}
                                     </p>
                                   </div>
-                                  <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
                                 </div>
-                              </div>
-
-                              {/* Action buttons below on mobile */}
-                              <div className="flex justify-center gap-3 border-t pt-2 mt-2">
-                                {isDraft && (
+                                <div className="flex items-center flex-wrap justify-end gap-4">
+                                  <div className="flex items-center gap-2 px-4">
+                                    <span
+                                      onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
+                                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
+                                      } ${getStatusColor(invoice.status)}`}
+                                    >
+                                      {getStatusLabel(invoice.status)}
+                                    </span>
+                                    <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => {
+                                        setInvoiceToEditId(invoice._id);
+                                        setIsEditorModalOpen(true);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
+                                      title="Modifier"
+                                    >
+                                      <IconEdit size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => setShowEmailConfirm(invoice._id)}
+                                      className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
+                                      title="Envoyer par email"
+                                    >
+                                      <IconMail size={20} stroke={1.5} />
+                                    </button>
+                                  )}
                                   <button
-                                    onClick={() => {
-                                      setInvoiceToEditId(invoice._id);
-                                      setIsEditorModalOpen(true);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
-                                    title="Modifier"
+                                    onClick={() => void handleViewPDF(invoice._id)}
+                                    className="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-50"
+                                    title="Visualiser PDF"
                                   >
-                                    <IconEdit size={20} stroke={1.5} />
+                                    <IconEye size={20} stroke={1.5} />
                                   </button>
-                                )}
-                                {isDraft && (
                                   <button
-                                    onClick={() => setShowEmailConfirm(invoice._id)}
-                                    className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
-                                    title="Envoyer par email"
+                                    onClick={() => void handleDuplicate(invoice._id)}
+                                    className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
+                                    title="Dupliquer"
                                   >
-                                    <IconMail size={20} stroke={1.5} />
+                                    <IconCopy size={20} stroke={1.5} />
                                   </button>
-                                )}
-                                <button
-                                  onClick={() => void handleViewPDF(invoice._id)}
-                                  className="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-50"
-                                  title="Visualiser PDF"
-                                >
-                                  <IconEye size={20} stroke={1.5} />
-                                </button>
-                                <button
-                                  onClick={() => void handleDuplicate(invoice._id)}
-                                  className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
-                                  title="Dupliquer"
-                                >
-                                  <IconCopy size={20} stroke={1.5} />
-                                </button>
-                                {isDraft && (
-                                  <button
-                                    onClick={() => setShowDeleteConfirm(invoice._id)}
-                                    className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
-                                    title="Supprimer"
-                                  >
-                                    <IconTrash size={20} stroke={1.5} />
-                                  </button>
-                                )}
+                                  {isDraft && (
+                                    <button
+                                      onClick={() => setShowDeleteConfirm(invoice._id)}
+                                      className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
+                                      title="Supprimer"
+                                    >
+                                      <IconTrash size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
-
-                            {/* Desktop: Original layout with flex */}
-                            <div className="hidden sm:flex flex-wrap justify-between items-center">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                                  <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
-                                  <p className="text-gray-600">#{invoice.invoiceNumber}</p>
-                                  <p className="text-gray-500 text-sm">
-                                    {formatDate(invoice.invoiceDate)} → {formatDate(invoice.paymentDate)}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center flex-wrap justify-end gap-4">
-                                <div className="flex items-center gap-2 px-4">
-                                  <span
-                                    onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      invoice.status === 'sent' || invoice.status === 'paid' ? 'cursor-pointer' : ''
-                                    } ${getStatusColor(invoice.status)}`}
-                                  >
-                                    {getStatusLabel(invoice.status)}
-                                  </span>
-                                  <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                {isDraft && (
-                                  <button
-                                    onClick={() => {
-                                      setInvoiceToEditId(invoice._id);
-                                      setIsEditorModalOpen(true);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50"
-                                    title="Modifier"
-                                  >
-                                    <IconEdit size={20} stroke={1.5} />
-                                  </button>
-                                )}
-                                {isDraft && (
-                                  <button
-                                    onClick={() => setShowEmailConfirm(invoice._id)}
-                                    className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
-                                    title="Envoyer par email"
-                                  >
-                                    <IconMail size={20} stroke={1.5} />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => void handleViewPDF(invoice._id)}
-                                  className="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-50"
-                                  title="Visualiser PDF"
-                                >
-                                  <IconEye size={20} stroke={1.5} />
-                                </button>
-                                <button
-                                  onClick={() => void handleDuplicate(invoice._id)}
-                                  className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
-                                  title="Dupliquer"
-                                >
-                                  <IconCopy size={20} stroke={1.5} />
-                                </button>
-                                {isDraft && (
-                                  <button
-                                    onClick={() => setShowDeleteConfirm(invoice._id)}
-                                    className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
-                                    title="Supprimer"
-                                  >
-                                    <IconTrash size={20} stroke={1.5} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              },
+            )}
           </div>
         )}
       </div>
