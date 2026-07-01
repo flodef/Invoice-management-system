@@ -161,9 +161,9 @@ export function InvoiceItemsManager({ items, setItems, isReadOnly }: InvoiceItem
                 <label className="block text-sm font-medium text-gray-700 mb-1">Qté</label>
                 <input
                   type="number"
-                  min="0.01"
+                  min="0.001"
                   max="99"
-                  step="0.01"
+                  step="0.001"
                   value={item.quantity}
                   onFocus={e => e.target.select()}
                   onChange={e => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
