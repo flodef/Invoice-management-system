@@ -99,7 +99,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
                 type="number"
                 step="5"
                 min="5"
-                max="1000"
+                max="9999"
                 maxLength={4}
                 value={formData.defaultPrice}
                 onFocus={e => e.target.select()}

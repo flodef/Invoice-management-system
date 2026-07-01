@@ -1,4 +1,4 @@
-import { IconChartLine } from '@tabler/icons-react';
+import { IconChartLine, IconInfoCircle } from '@tabler/icons-react';
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -25,14 +25,19 @@ export function StatisticsPage() {
   // Use memoized empty array as fallback for invoices
   const invoices = useMemo(() => rawInvoices || [], [rawInvoices]);
 
-  // Process invoices to get monthly totals
+  // Process invoices to get monthly totals (only paid invoices)
   const monthlyData = useMemo(() => {
     if (!invoices.length) return [];
+
+    // Filter only paid invoices
+    const paidInvoices = invoices.filter(invoice => invoice.status === 'paid');
+
+    if (!paidInvoices.length) return [];
 
     const monthMap = new Map<string, number>();
 
     // Sort invoices by date (oldest first)
-    const sortedInvoices = [...invoices].sort((a, b) => a.invoiceDate - b.invoiceDate);
+    const sortedInvoices = [...paidInvoices].sort((a, b) => a.invoiceDate - b.invoiceDate);
 
     // Group by month and sum totals
     sortedInvoices.forEach(invoice => {
@@ -184,8 +189,14 @@ export function StatisticsPage() {
                 </div>
               </div>
               <div className="bg-gray-50 p-4 rounded-md">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 flex items-center gap-1">
                   Dernier trimestre {lastQuarterData.months.length > 0 && `(${lastQuarterData.months.join(', ')})`}
+                  <div className="relative group inline-block">
+                    <IconInfoCircle size={16} className="text-gray-400 cursor-help" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      A déclarer en BIC
+                    </div>
+                  </div>
                 </div>
                 <div className="text-xl font-bold text-blue-800">{formatCurrency(lastQuarterTotal)}</div>
               </div>

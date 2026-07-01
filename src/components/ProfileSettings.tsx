@@ -33,6 +33,13 @@ export function ProfileSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate SIRET is exactly 14 characters
+    if (formData.freelanceId.length !== 14) {
+      toast.error('Le numéro SIRET doit comporter exactement 14 caractères');
+      return;
+    }
+
     try {
       await updateProfile(formData);
       toast.success('Profil mis à jour avec succès!');
