@@ -391,37 +391,3 @@ export const checkInvoiceExists = mutation({
     return false;
   },
 });
-
-// Migration: Update paymentDate for all invoices
-// - Set paymentDate to invoiceDate for paid invoices
-// - Set paymentDate to null for sent/draft invoices
-export const migratePaidInvoicesPaymentDate = mutation({
-  args: {},
-  handler: async ctx => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-
-    // Get all invoices for the user
-    const invoices = await ctx.db
-      .query('invoices')
-      .withIndex('by_user', q => q.eq('userId', userId))
-      .collect();
-
-    let paidUpdated = 0;
-    let sentUpdated = 0;
-
-    for (const invoice of invoices) {
-      if (invoice.status === 'paid') {
-        // Set paymentDate to invoiceDate for paid invoices
-        await ctx.db.patch(invoice._id, { paymentDate: invoice.invoiceDate });
-        paidUpdated++;
-      } else if (invoice.status === 'sent' || invoice.status === 'draft') {
-        // Set paymentDate to null for sent/draft invoices
-        await ctx.db.patch(invoice._id, { paymentDate: undefined });
-        sentUpdated++;
-      }
-    }
-
-    return { paidUpdated, sentUpdated };
-  },
-});

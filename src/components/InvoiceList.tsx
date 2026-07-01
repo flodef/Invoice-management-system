@@ -31,7 +31,6 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
   const duplicateInvoice = useMutation(api.invoices.duplicateInvoice);
   const toggleInvoiceStatus = useMutation(api.invoices.toggleInvoiceStatus);
-  const migratePaidInvoicesPaymentDate = useMutation(api.invoices.migratePaidInvoicesPaymentDate);
   const generatePDF = useAction(api.pdf.generateInvoicePDF);
   const getStorageUrl = useAction(api.pdf.getStorageUrl);
   const sendInvoiceEmail = useAction(api.email.sendInvoiceEmail);
@@ -316,21 +315,6 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     }
   };
 
-  const handleMigration = async () => {
-    try {
-      toast.loading('Migration des dates de paiement...');
-      const result = await migratePaidInvoicesPaymentDate({});
-      toast.dismiss();
-      toast.success(
-        `${result.paidUpdated} facture(s) payée(s) et ${result.sentUpdated} facture(s) envoyée(s)/brouillon migrée(s) avec succès!`,
-      );
-    } catch (error) {
-      toast.dismiss();
-      toast.error('Échec de la migration');
-      console.error('Migration error:', error);
-    }
-  };
-
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('fr-FR');
   };
@@ -493,14 +477,6 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Factures</h2>
         <div className="flex gap-2">
-          <button
-            onClick={() => void handleMigration()}
-            className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-1"
-            title="Migrer les dates de paiement"
-          >
-            <IconCopy size={20} stroke={1.5} />
-            <span className="sm:inline hidden">Migrer les dates</span>
-          </button>
           {shouldShowDuplicateButton && (
             <button
               onClick={() => void handleDuplicatePreviousMonth()}
