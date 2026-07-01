@@ -22,7 +22,6 @@ const applicationTables = {
     email: v.string(),
     legalForm: v.string(), // "SARL", "EURL", "Micro-entrepreneur"
     isActive: v.optional(v.boolean()),
-    status: v.optional(v.string()), // Temporary: will be removed after migration
   }).index('by_user', ['userId']),
 
   services: defineTable({
@@ -30,7 +29,6 @@ const applicationTables = {
     label: v.string(),
     defaultPrice: v.number(),
     isActive: v.optional(v.boolean()),
-    isGlobal: v.optional(v.boolean()), // Temporary: will be removed after migration
   }).index('by_user', ['userId']),
 
   invoices: defineTable({
@@ -38,7 +36,7 @@ const applicationTables = {
     clientId: v.id('clients'),
     invoiceNumber: v.string(),
     invoiceDate: v.number(),
-    paymentDate: v.number(),
+    paymentDate: v.optional(v.number()), // null for sent/draft, set to payment date when paid
     status: v.string(), // "draft", "sent", "paid"
     totalAmount: v.number(),
     items: v.array(

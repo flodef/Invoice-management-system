@@ -37,11 +37,15 @@ export function StatisticsPage() {
     const monthMap = new Map<string, number>();
 
     // Sort invoices by payment date (oldest first) - use paymentDate for paid invoices
-    const sortedInvoices = [...paidInvoices].sort((a, b) => a.paymentDate - b.paymentDate);
+    const sortedInvoices = [...paidInvoices].sort((a, b) => {
+      const aDate = a.paymentDate || a.invoiceDate;
+      const bDate = b.paymentDate || b.invoiceDate;
+      return aDate - bDate;
+    });
 
     // Group by month and sum totals based on payment date
     sortedInvoices.forEach(invoice => {
-      const date = new Date(invoice.paymentDate);
+      const date = new Date(invoice.paymentDate || invoice.invoiceDate);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
 
       const currentAmount = monthMap.get(monthKey) || 0;

@@ -267,12 +267,12 @@ export const toggleInvoiceStatus = mutation({
     const newStatus = args.status === 'sent' ? 'paid' : 'sent';
 
     // When marking as paid, set paymentDate to current date
-    // When changing back to sent, clear paymentDate
+    // When changing back to sent, clear paymentDate (set to undefined)
     const patchData: any = { status: newStatus };
     if (newStatus === 'paid') {
       patchData.paymentDate = Date.now();
     } else {
-      patchData.paymentDate = calculatePaymentDate(invoice.invoiceDate);
+      patchData.paymentDate = undefined;
     }
 
     await ctx.db.patch(args.id, patchData);
@@ -392,67 +392,36 @@ export const checkInvoiceExists = mutation({
   },
 });
 
-// Migration: Update paymentDate for all paid invoices to match invoiceDate
-// This is a one-time migration to fix historical data where paymentDate was used as due date
+// Migration: Update paymentDate for all invoices
+// - Set paymentDate to invoiceDate for paid invoices
+// - Set paymentDate to null for sent/draft invoices
 export const migratePaidInvoicesPaymentDate = mutation({
   args: {},
   handler: async ctx => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error('Not authenticated');
 
-    // Get all paid invoices for the user
-    const paidInvoices = await ctx.db
+    // Get all invoices for the user
+    const invoices = await ctx.db
       .query('invoices')
       .withIndex('by_user', q => q.eq('userId', userId))
       .collect();
 
-    const paidInvoicesToUpdate = paidInvoices.filter(invoice => invoice.status === 'paid');
+    let paidUpdated = 0;
+    let sentUpdated = 0;
 
-    // Update each paid invoice to set paymentDate to invoiceDate
-    for (const invoice of paidInvoicesToUpdate) {
-      await ctx.db.patch(invoice._id, { paymentDate: invoice.invoiceDate });
-    }
-
-    return { updated: paidInvoicesToUpdate.length };
-  },
-});
-
-// Temporary migration: Clean legacy fields from clients and services
-// This will be removed after running once
-export const cleanLegacyFields = mutation({
-  args: {},
-  handler: async ctx => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-
-    // Clean clients - remove 'status' field
-    const clients = await ctx.db
-      .query('clients')
-      .withIndex('by_user', q => q.eq('userId', userId))
-      .collect();
-    let clientsCleaned = 0;
-    for (const client of clients) {
-      if ('status' in client) {
-        const { status: _status, ...clientWithoutStatus } = client;
-        await ctx.db.replace(client._id, clientWithoutStatus);
-        clientsCleaned++;
+    for (const invoice of invoices) {
+      if (invoice.status === 'paid') {
+        // Set paymentDate to invoiceDate for paid invoices
+        await ctx.db.patch(invoice._id, { paymentDate: invoice.invoiceDate });
+        paidUpdated++;
+      } else if (invoice.status === 'sent' || invoice.status === 'draft') {
+        // Set paymentDate to null for sent/draft invoices
+        await ctx.db.patch(invoice._id, { paymentDate: undefined });
+        sentUpdated++;
       }
     }
 
-    // Clean services - remove 'isGlobal' field
-    const services = await ctx.db
-      .query('services')
-      .withIndex('by_user', q => q.eq('userId', userId))
-      .collect();
-    let servicesCleaned = 0;
-    for (const service of services) {
-      if ('isGlobal' in service) {
-        const { isGlobal: _isGlobal, ...serviceWithoutIsGlobal } = service;
-        await ctx.db.replace(service._id, serviceWithoutIsGlobal);
-        servicesCleaned++;
-      }
-    }
-
-    return { clientsCleaned, servicesCleaned };
+    return { paidUpdated, sentUpdated };
   },
 });
