@@ -417,7 +417,8 @@ export const migratePaidInvoicesPaymentDate = mutation({
   },
 });
 
-// Migration: Clean legacy fields from clients and services
+// Temporary migration: Clean legacy fields from clients and services
+// This will be removed after running once
 export const cleanLegacyFields = mutation({
   args: {},
   handler: async ctx => {
