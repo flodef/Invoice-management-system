@@ -416,3 +416,42 @@ export const migratePaidInvoicesPaymentDate = mutation({
     return { updated: paidInvoicesToUpdate.length };
   },
 });
+
+// Migration: Clean legacy fields from clients and services
+export const cleanLegacyFields = mutation({
+  args: {},
+  handler: async ctx => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    // Clean clients - remove 'status' field
+    const clients = await ctx.db
+      .query('clients')
+      .withIndex('by_user', q => q.eq('userId', userId))
+      .collect();
+    let clientsCleaned = 0;
+    for (const client of clients) {
+      if ('status' in client) {
+        const { status: _status, ...clientWithoutStatus } = client;
+        await ctx.db.replace(client._id, clientWithoutStatus);
+        clientsCleaned++;
+      }
+    }
+
+    // Clean services - remove 'isGlobal' field
+    const services = await ctx.db
+      .query('services')
+      .withIndex('by_user', q => q.eq('userId', userId))
+      .collect();
+    let servicesCleaned = 0;
+    for (const service of services) {
+      if ('isGlobal' in service) {
+        const { isGlobal: _isGlobal, ...serviceWithoutIsGlobal } = service;
+        await ctx.db.replace(service._id, serviceWithoutIsGlobal);
+        servicesCleaned++;
+      }
+    }
+
+    return { clientsCleaned, servicesCleaned };
+  },
+});

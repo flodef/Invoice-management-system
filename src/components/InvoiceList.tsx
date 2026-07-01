@@ -32,6 +32,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const duplicateInvoice = useMutation(api.invoices.duplicateInvoice);
   const toggleInvoiceStatus = useMutation(api.invoices.toggleInvoiceStatus);
   const migratePaidInvoicesPaymentDate = useMutation(api.invoices.migratePaidInvoicesPaymentDate);
+  const cleanLegacyFields = useMutation(api.invoices.cleanLegacyFields);
   const generatePDF = useAction(api.pdf.generateInvoicePDF);
   const getStorageUrl = useAction(api.pdf.getStorageUrl);
   const sendInvoiceEmail = useAction(api.email.sendInvoiceEmail);
@@ -329,6 +330,21 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     }
   };
 
+  const handleCleanLegacyFields = async () => {
+    try {
+      toast.loading('Nettoyage des champs obsolètes...');
+      const result = await cleanLegacyFields({});
+      toast.dismiss();
+      toast.success(
+        `${result.clientsCleaned} client(s) et ${result.servicesCleaned} service(s) nettoyé(s) avec succès!`,
+      );
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Échec du nettoyage');
+      console.error('Clean error:', error);
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('fr-FR');
   };
@@ -491,6 +507,14 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Factures</h2>
         <div className="flex gap-2">
+          <button
+            onClick={() => void handleCleanLegacyFields()}
+            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors flex items-center gap-1"
+            title="Nettoyer les champs obsolètes"
+          >
+            <IconCopy size={20} stroke={1.5} />
+            <span className="sm:inline hidden">Nettoyer</span>
+          </button>
           <button
             onClick={() => void handleMigration()}
             className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-1"

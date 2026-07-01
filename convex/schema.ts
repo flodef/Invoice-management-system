@@ -21,14 +21,16 @@ const applicationTables = {
     address: v.string(),
     email: v.string(),
     legalForm: v.string(), // "SARL", "EURL", "Micro-entrepreneur"
-    isActive: v.boolean(),
+    isActive: v.optional(v.boolean()),
+    status: v.optional(v.string()), // Temporary: will be removed after migration
   }).index('by_user', ['userId']),
 
   services: defineTable({
     userId: v.id('users'),
     label: v.string(),
     defaultPrice: v.number(),
-    isActive: v.boolean(),
+    isActive: v.optional(v.boolean()),
+    isGlobal: v.optional(v.boolean()), // Temporary: will be removed after migration
   }).index('by_user', ['userId']),
 
   invoices: defineTable({
