@@ -31,6 +31,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
   const duplicateInvoice = useMutation(api.invoices.duplicateInvoice);
   const toggleInvoiceStatus = useMutation(api.invoices.toggleInvoiceStatus);
+  const migratePaidInvoicesPaymentDate = useMutation(api.invoices.migratePaidInvoicesPaymentDate);
   const generatePDF = useAction(api.pdf.generateInvoicePDF);
   const getStorageUrl = useAction(api.pdf.getStorageUrl);
   const sendInvoiceEmail = useAction(api.email.sendInvoiceEmail);
@@ -38,6 +39,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const [showEmailConfirm, setShowEmailConfirm] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showDuplicateConfirm, setShowDuplicateConfirm] = useState<string | null>(null);
+  const [showStatusConfirm, setShowStatusConfirm] = useState<string | null>(null);
   const [customMessage, setCustomMessage] = useState<string>('');
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
   const [showPdfViewer, setShowPdfViewer] = useState<string | null>(null);
@@ -60,9 +62,28 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const handleToggleStatus = async (id: Id<'invoices'>, status: string) => {
     if (status !== 'sent' && status !== 'paid') return;
 
+    // If changing from paid to sent, show confirmation
+    if (status === 'paid') {
+      setShowStatusConfirm(id);
+      return;
+    }
+
     try {
       await toggleInvoiceStatus({ id, status });
       toast.success(`Facture marquée comme ${status === 'sent' ? 'payée' : 'envoyée'}`);
+    } catch {
+      toast.error('Échec du changement de statut de la facture');
+    }
+  };
+
+  const confirmStatusChange = async (id: string) => {
+    try {
+      const invoice = invoices.find(inv => inv._id === id);
+      if (!invoice) return;
+
+      await toggleInvoiceStatus({ id: id as any, status: invoice.status });
+      toast.success('Date de paiement effacée, facture marquée comme envoyée');
+      setShowStatusConfirm(null);
     } catch {
       toast.error('Échec du changement de statut de la facture');
     }
@@ -295,8 +316,27 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     }
   };
 
+  const handleMigration = async () => {
+    try {
+      toast.loading('Migration des factures payées...');
+      const result = await migratePaidInvoicesPaymentDate({});
+      toast.dismiss();
+      toast.success(`${result.updated} facture(s) payée(s) migrée(s) avec succès!`);
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Échec de la migration');
+      console.error('Migration error:', error);
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('fr-FR');
+  };
+
+  const calculateDueDate = (invoiceDate: number) => {
+    const date = new Date(invoiceDate);
+    date.setMonth(date.getMonth() + 1);
+    return date;
   };
 
   const formatCurrency = (amount: number) => {
@@ -331,7 +371,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
         .filter(invoice => invoice.status === 'paid')
         .reduce((sum, invoice) => sum + invoice.totalAmount, 0);
       const unpaidCount = groups[monthKey].filter(
-        invoice => invoice.status === 'sent' && new Date(invoice.paymentDate) < new Date(),
+        invoice => invoice.status === 'sent' && new Date(calculateDueDate(invoice.invoiceDate).getTime()) < new Date(),
       ).length;
 
       return {
@@ -443,7 +483,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   };
 
   const unpaidInvoices = invoices.filter(
-    invoice => invoice.status === 'sent' && new Date(invoice.paymentDate) < new Date(),
+    invoice => invoice.status === 'sent' && new Date(calculateDueDate(invoice.invoiceDate).getTime()) < new Date(),
   );
 
   return (
@@ -451,6 +491,14 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Factures</h2>
         <div className="flex gap-2">
+          <button
+            onClick={() => void handleMigration()}
+            className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-1"
+            title="Migrer les dates de paiement"
+          >
+            <IconCopy size={20} stroke={1.5} />
+            <span className="sm:inline hidden">Migrer les dates</span>
+          </button>
           {shouldShowDuplicateButton && (
             <button
               onClick={() => void handleDuplicatePreviousMonth()}
@@ -564,7 +612,8 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                     <div>
                                       <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
                                       <p className="text-gray-500 text-xs">
-                                        {formatDate(invoice.invoiceDate)} → {formatDate(invoice.paymentDate)}
+                                        {formatDate(invoice.invoiceDate)} →{' '}
+                                        {formatDate(calculateDueDate(invoice.invoiceDate).getTime())}
                                       </p>
                                     </div>
                                     <p className="font-semibold text-lg">{formatCurrency(invoice.totalAmount)}</p>
@@ -627,7 +676,8 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                     <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
                                     <p className="text-gray-600">#{invoice.invoiceNumber}</p>
                                     <p className="text-gray-500 text-sm">
-                                      {formatDate(invoice.invoiceDate)} → {formatDate(invoice.paymentDate)}
+                                      {formatDate(invoice.invoiceDate)} →{' '}
+                                      {formatDate(calculateDueDate(invoice.invoiceDate).getTime())}
                                     </p>
                                   </div>
                                 </div>
@@ -917,6 +967,51 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                     className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
                   >
                     Dupliquer
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* Status Change Confirmation Modal */}
+      {showStatusConfirm &&
+        (() => {
+          const invoice = invoices.find(inv => inv._id === showStatusConfirm);
+          if (!invoice) return null;
+
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4">
+                <h3 className="text-lg font-semibold mb-4 text-orange-600">Confirmer le changement de statut</h3>
+                <div className="mb-4">
+                  <p className="text-gray-700 mb-4">
+                    Êtes-vous sûr de vouloir marquer cette facture comme "Envoyée" ? La date de paiement sera effacée.
+                  </p>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <p className="text-gray-700 mb-1">
+                      <strong>Facture:</strong> {invoice.invoiceNumber}
+                    </p>
+                    <p className="text-gray-700 mb-1">
+                      <strong>Client:</strong> {invoice.client?.name || 'Client inconnu'}
+                    </p>
+                    <p className="text-gray-700">
+                      <strong>Montant:</strong> {formatCurrency(invoice.totalAmount)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowStatusConfirm(null)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => void confirmStatusChange(showStatusConfirm)}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+                  >
+                    Confirmer
                   </button>
                 </div>
               </div>

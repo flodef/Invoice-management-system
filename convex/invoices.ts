@@ -266,7 +266,16 @@ export const toggleInvoiceStatus = mutation({
 
     const newStatus = args.status === 'sent' ? 'paid' : 'sent';
 
-    await ctx.db.patch(args.id, { status: newStatus });
+    // When marking as paid, set paymentDate to current date
+    // When changing back to sent, clear paymentDate
+    const patchData: any = { status: newStatus };
+    if (newStatus === 'paid') {
+      patchData.paymentDate = Date.now();
+    } else {
+      patchData.paymentDate = calculatePaymentDate(invoice.invoiceDate);
+    }
+
+    await ctx.db.patch(args.id, patchData);
   },
 });
 
@@ -380,5 +389,30 @@ export const checkInvoiceExists = mutation({
     }
 
     return false;
+  },
+});
+
+// Migration: Update paymentDate for all paid invoices to match invoiceDate
+// This is a one-time migration to fix historical data where paymentDate was used as due date
+export const migratePaidInvoicesPaymentDate = mutation({
+  args: {},
+  handler: async ctx => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    // Get all paid invoices for the user
+    const paidInvoices = await ctx.db
+      .query('invoices')
+      .withIndex('by_user', q => q.eq('userId', userId))
+      .collect();
+
+    const paidInvoicesToUpdate = paidInvoices.filter(invoice => invoice.status === 'paid');
+
+    // Update each paid invoice to set paymentDate to invoiceDate
+    for (const invoice of paidInvoicesToUpdate) {
+      await ctx.db.patch(invoice._id, { paymentDate: invoice.invoiceDate });
+    }
+
+    return { updated: paidInvoicesToUpdate.length };
   },
 });
