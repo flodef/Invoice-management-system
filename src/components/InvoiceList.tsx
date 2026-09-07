@@ -541,7 +541,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                           <span className="sm:hidden">{formatMonthLabel(monthKey, 'short')}</span>
                         </span>
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium whitespace-nowrap">
-                          {count} facture{count > 1 ? 's' : ''}
+                          <span className="sm:hidden">{count}</span>
+                          <span className="hidden sm:inline">
+                            {count} facture{count > 1 ? 's' : ''}
+                          </span>
                         </span>
                         <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium whitespace-nowrap">
                           {paidAmount === totalAmount
