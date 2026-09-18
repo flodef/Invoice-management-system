@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
+import type * as importInvoice from "../importInvoice.js";
 import type * as invoices from "../invoices.js";
 import type * as pdf from "../pdf.js";
 import type * as router from "../router.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   clients: typeof clients;
   email: typeof email;
   http: typeof http;
+  importInvoice: typeof importInvoice;
   invoices: typeof invoices;
   pdf: typeof pdf;
   router: typeof router;
