@@ -3,6 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Restores the stored theme before first paint — sets data-theme
+         (system/light/dark) plus the resolved .dark/.light class so CSS and
+         the toggle's active state are correct with no flash. -->
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem('theme');
+          if (m !== 'light' && m !== 'dark') m = 'system';
+          var r = m === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : m;
+          var d = document.documentElement;
+          d.dataset.theme = m;
+          d.classList.toggle('dark', r === 'dark');
+          d.classList.toggle('light', r === 'light');
+          d.style.colorScheme = r;
+        } catch (e) {}
+      })();
+    </script>
     <link rel="stylesheet" href="/src/index.css" />
 
     <title>Invoice Manager</title>
