@@ -2,8 +2,9 @@
 
 import { v } from 'convex/values';
 import { jsPDF } from 'jspdf';
-import { api } from './_generated/api';
-import { action } from './_generated/server';
+import { api, internal } from './_generated/api';
+import type { Id } from './_generated/dataModel';
+import { action, internalAction, type ActionCtx } from './_generated/server';
 
 const MAX_PAGE_WIDTH = 170;
 
@@ -38,33 +39,43 @@ export const getStorageUrl = action({
   },
 });
 
+// Shared PDF generation — internal variants of the queries/mutations so both
+// the authenticated UI path and the server-to-server HTTP path can call it.
+const generateInvoicePDFCore = async (ctx: ActionCtx, invoiceId: Id<'invoices'>) => {
+  const invoice = await ctx.runQuery(internal.invoices.getInvoiceByIdInternal, { id: invoiceId });
+  if (!invoice) throw new Error('Invoice not found');
+
+  const pdfBuffer = createInvoicePDF(invoice);
+  const storageId = await ctx.storage.store(new Blob([pdfBuffer], { type: 'application/pdf' }));
+
+  await ctx.runMutation(internal.invoices.updateInvoicePDFInternal, {
+    invoiceId,
+    pdfStorageId: storageId,
+  });
+
+  return { storageId, message: 'PDF generated successfully' };
+};
+
 export const generateInvoicePDF = action({
   args: {
     invoiceId: v.id('invoices'),
   },
   handler: async (ctx, args) => {
-    // Get invoice data
-    const invoice = await ctx.runQuery(api.invoices.getInvoiceById, {
-      id: args.invoiceId,
-    });
+    // Auth gate — the authed query enforces ownership (returns null otherwise).
+    const invoice = await ctx.runQuery(api.invoices.getInvoiceById, { id: args.invoiceId });
+    if (!invoice) throw new Error('Invoice not found');
 
-    if (!invoice) {
-      throw new Error('Invoice not found');
-    }
-
-    // Generate PDF using jsPDF
-    const pdfBuffer = createInvoicePDF(invoice);
-
-    const storageId = await ctx.storage.store(new Blob([pdfBuffer], { type: 'application/pdf' }));
-
-    // Update the invoice with the new pdfStorageId
-    await ctx.runMutation(api.invoices.updateInvoicePDF, {
-      invoiceId: args.invoiceId,
-      pdfStorageId: storageId,
-    });
-
-    return { storageId, message: 'PDF generated successfully' };
+    return generateInvoicePDFCore(ctx, args.invoiceId);
   },
+});
+
+// Server-to-server variant — only reachable from other Convex functions
+// (the /send-invoice-email HTTP endpoint), never from the public API.
+export const generateInvoicePDFInternal = internalAction({
+  args: {
+    invoiceId: v.id('invoices'),
+  },
+  handler: async (ctx, args) => generateInvoicePDFCore(ctx, args.invoiceId),
 });
 
 function createInvoicePDF(invoice: any): Uint8Array {
@@ -82,7 +93,9 @@ function createInvoicePDF(invoice: any): Uint8Array {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'EUR',
-    }).format(amount).replace(/\s/g, '');
+    })
+      .format(amount)
+      .replace(/\s/g, '');
   };
 
   // Create new PDF document

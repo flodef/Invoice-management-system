@@ -1,5 +1,5 @@
 import { httpRouter } from 'convex/server';
-import { importInvoice } from './importInvoice';
+import { importInvoice, sendInvoiceEmailHttp } from './importInvoice';
 
 const http = httpRouter();
 
@@ -8,6 +8,13 @@ http.route({
   path: '/import-invoice',
   method: 'POST',
   handler: importInvoice,
+});
+
+// Server-to-server invoice email send (PDF + owner bcc + mark sent).
+http.route({
+  path: '/send-invoice-email',
+  method: 'POST',
+  handler: sendInvoiceEmailHttp,
 });
 
 export default http;

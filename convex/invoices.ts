@@ -2,7 +2,8 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { api } from './_generated/api';
 import { Id } from './_generated/dataModel';
-import { mutation, query } from './_generated/server';
+import { internalMutation, internalQuery, mutation, query, type MutationCtx } from './_generated/server';
+import { internal } from './_generated/api';
 import { calculatePaymentDate } from './utils';
 
 function roundToTwoDecimals(num: number): number {
@@ -210,6 +211,66 @@ export const updateInvoice = mutation({
   },
 });
 
+// Internal lookup for the HTTP endpoints — no user session server-to-server;
+// the single-owner deployment is resolved from the first userProfile row.
+export const getByInvoiceNumber = internalQuery({
+  args: { invoiceNumber: v.string() },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db
+      .query('invoices')
+      .withIndex('by_invoice_number', q => q.eq('invoiceNumber', args.invoiceNumber))
+      .first();
+    return invoice ?? null;
+  },
+});
+
+// Same as markInvoiceAsSent but for the HTTP send path (no auth context).
+export const markSentInternal = internalMutation({
+  args: { id: v.id('invoices') },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db.get(args.id);
+    await ctx.db.patch(args.id, { status: 'sent' });
+    if (invoice?.source === 'job-conciergerie') notifyJobConciergerie(ctx, invoice.invoiceNumber, 'sent');
+  },
+});
+
+// Same as getInvoiceById but for the HTTP send path — the single-owner
+// deployment is resolved from the first userProfile row (like createExternal).
+export const getInvoiceByIdInternal = internalQuery({
+  args: { id: v.id('invoices') },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db.get(args.id);
+    if (!invoice) return null;
+
+    const client = await ctx.db.get(invoice.clientId);
+    const userProfile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_user', q => q.eq('userId', invoice.userId))
+      .first();
+
+    return { ...invoice, client, userProfile };
+  },
+});
+
+// Same as updateInvoicePDF but for the HTTP send path (no auth context).
+export const updateInvoicePDFInternal = internalMutation({
+  args: {
+    invoiceId: v.id('invoices'),
+    pdfStorageId: v.id('_storage'),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.invoiceId, { pdfStorageId: args.pdfStorageId });
+  },
+});
+
+// Push a status change back to Job Conciergerie for invoices it imported
+// (source='job-conciergerie') — keeps JC's invoices.status in sync. JC only
+// accepts 'sent'/'paid'; other statuses (draft…) stay IMS-local.
+const notifyJobConciergerie = (ctx: MutationCtx, invoiceNumber: string, status: string) => {
+  if (status !== 'sent' && status !== 'paid') return;
+  void ctx.scheduler.runAfter(0, internal.statusSync.notifyJobConciergerie, { invoiceNumber, status });
+};
+
 // Mark invoice as sent
 export const markInvoiceAsSent = mutation({
   args: { id: v.id('invoices') },
@@ -223,6 +284,7 @@ export const markInvoiceAsSent = mutation({
     }
 
     await ctx.db.patch(args.id, { status: 'sent' });
+    if (invoice.source === 'job-conciergerie') notifyJobConciergerie(ctx, invoice.invoiceNumber, 'sent');
   },
 });
 
@@ -242,6 +304,7 @@ export const updateInvoiceStatus = mutation({
     }
 
     await ctx.db.patch(args.id, { status: args.status });
+    if (invoice.source === 'job-conciergerie') notifyJobConciergerie(ctx, invoice.invoiceNumber, args.status);
   },
 });
 
@@ -276,6 +339,7 @@ export const toggleInvoiceStatus = mutation({
     }
 
     await ctx.db.patch(args.id, patchData);
+    if (invoice.source === 'job-conciergerie') notifyJobConciergerie(ctx, invoice.invoiceNumber, newStatus);
   },
 });
 

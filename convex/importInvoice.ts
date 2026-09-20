@@ -113,6 +113,7 @@ export const createExternal = internalMutation({
       invoiceDate,
       paymentDate: calculatePaymentDate(invoiceDate),
       status: 'sent',
+      source: 'job-conciergerie',
       totalAmount: total,
       items: [
         {
@@ -173,6 +174,47 @@ export const importInvoice = httpAction(async (ctx, request) => {
   });
 
   return new Response(JSON.stringify({ ok: true, ...result }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+});
+
+/**
+ * POST /send-invoice-email — bearer-authenticated. Runs the standard invoice
+ * email flow (generated PDF attached, owner in bcc) on an imported invoice,
+ * then marks it sent — the client-facing email is the real accounting
+ * document. Called by the Job Conciergerie billing cron right after import.
+ */
+export const sendInvoiceEmailHttp = httpAction(async (ctx, request) => {
+  const secret = process.env.IMS_IMPORT_SECRET;
+  if (!secret) return new Response(JSON.stringify({ error: 'Server misconfigured' }), { status: 500 });
+  if (request.headers.get('authorization') !== `Bearer ${secret}`)
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+  }
+  const invoiceNumber = (body as { invoiceNumber?: string }).invoiceNumber;
+  if (!invoiceNumber) {
+    return new Response(JSON.stringify({ error: 'invoiceNumber is required' }), { status: 400 });
+  }
+
+  const invoice = await ctx.runQuery(internal.invoices.getByInvoiceNumber, { invoiceNumber });
+  if (!invoice) return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
+
+  try {
+    // Internal action — generates the PDF, emails the client (owner in bcc)
+    // and marks the invoice sent, all without a user session.
+    await ctx.runAction(internal.email.sendInvoiceEmailInternal, { invoiceId: invoice._id });
+  } catch (error) {
+    console.error('sendInvoiceEmail failed:', error);
+    return new Response(JSON.stringify({ error: 'Send failed' }), { status: 502 });
+  }
+
+  return new Response(JSON.stringify({ ok: true }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });

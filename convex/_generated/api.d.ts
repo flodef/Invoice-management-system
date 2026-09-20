@@ -17,6 +17,7 @@ import type * as invoices from "../invoices.js";
 import type * as pdf from "../pdf.js";
 import type * as router from "../router.js";
 import type * as services from "../services.js";
+import type * as statusSync from "../statusSync.js";
 import type * as uploadInvoice from "../uploadInvoice.js";
 import type * as userProfile from "../userProfile.js";
 import type * as utils from "../utils.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   pdf: typeof pdf;
   router: typeof router;
   services: typeof services;
+  statusSync: typeof statusSync;
   uploadInvoice: typeof uploadInvoice;
   userProfile: typeof userProfile;
   utils: typeof utils;
