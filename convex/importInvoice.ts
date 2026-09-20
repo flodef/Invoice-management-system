@@ -1,6 +1,6 @@
 import { v } from 'convex/values';
 import { httpAction, internalMutation } from './_generated/server';
-import { internal } from './_generated/api';
+import { api, internal } from './_generated/api';
 import { calculatePaymentDate } from './utils';
 import type { Id } from './_generated/dataModel';
 
@@ -40,6 +40,7 @@ export const createExternal = internalMutation({
     unitPrice: v.number(),
     discount: v.optional(v.number()),
     invoiceDate: v.optional(v.string()), // ISO date
+    test: v.optional(v.boolean()), // admin testing — TEST- draft, see below
   },
   handler: async (ctx, args) => {
     const profile = await ctx.db.query('userProfiles').first();
@@ -92,13 +93,52 @@ export const createExternal = internalMutation({
 
     // Dedup: the client already has an invoice numbered this month — either
     // our previous import or a manually created one covering this billing.
+    const discount = Math.min(100, Math.max(0, args.discount ?? 0));
+    const total = roundToTwoDecimals(args.unitPrice * (1 - discount / 100));
+    const items = [
+      {
+        serviceId,
+        label: itemLabel,
+        quantity: 1,
+        price: args.unitPrice,
+        ...(discount > 0 ? { discount, discountUnit: '%', discountText: 'Remise négociée' } : {}),
+        total,
+      },
+    ];
+
+    // Test mode (JC admin "Facture" section): a dedicated TEST- draft per
+    // client, refreshed on each call — it never joins the real YYYYMM
+    // numbering, which must stay gapless for French accounting.
+    if (args.test) {
+      const testNumber = `TEST-${clientId.slice(-4).toUpperCase()}`;
+      const existingTest = invoices.find(inv => inv.clientId === clientId && inv.invoiceNumber === testNumber);
+      if (existingTest) {
+        await ctx.db.patch(existingTest._id, {
+          invoiceDate,
+          paymentDate: calculatePaymentDate(invoiceDate),
+          totalAmount: total,
+          items,
+        });
+        return { invoiceId: existingTest._id, invoiceNumber: existingTest.invoiceNumber, created: false };
+      }
+      const invoiceId = await ctx.db.insert('invoices', {
+        userId,
+        clientId,
+        invoiceNumber: testNumber,
+        invoiceDate,
+        paymentDate: calculatePaymentDate(invoiceDate),
+        status: 'draft',
+        source: 'job-conciergerie-test',
+        totalAmount: total,
+        items,
+      });
+      return { invoiceId, invoiceNumber: testNumber, created: true };
+    }
+
     const existing = invoices.find(inv => inv.clientId === clientId && inv.invoiceNumber.startsWith(prefix));
     if (existing) {
       return { invoiceId: existing._id, invoiceNumber: existing.invoiceNumber, created: false };
     }
-
-    const discount = Math.min(100, Math.max(0, args.discount ?? 0));
-    const total = roundToTwoDecimals(args.unitPrice * (1 - discount / 100));
 
     // Numbering mirrors invoices.generateInvoiceNumber: YYYYMM + 2-digit seq.
     const maxNumber = invoices
@@ -115,53 +155,66 @@ export const createExternal = internalMutation({
       status: 'sent',
       source: 'job-conciergerie',
       totalAmount: total,
-      items: [
-        {
-          serviceId,
-          label: itemLabel,
-          quantity: 1,
-          price: args.unitPrice,
-          ...(discount > 0 ? { discount, discountUnit: '%', discountText: 'Remise négociée' } : {}),
-          total,
-        },
-      ],
+      items,
     });
 
     return { invoiceId, invoiceNumber, created: true };
   },
 });
 
-/**
- * POST /import-invoice — bearer-authenticated entry point for external
- * systems. The secret is a deployment env var (IMS_IMPORT_SECRET), never in
- * the codebase.
- */
-export const importInvoice = httpAction(async (ctx, request) => {
+// Shared bearer auth — the secret is a deployment env var
+// (IMS_IMPORT_SECRET), never in the codebase.
+const checkAuth = (request: Request): Response | null => {
   const secret = process.env.IMS_IMPORT_SECRET;
-  const unauthorized = () => new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   if (!secret) return new Response(JSON.stringify({ error: 'Server misconfigured' }), { status: 500 });
-  if (request.headers.get('authorization') !== `Bearer ${secret}`) return unauthorized();
+  if (request.headers.get('authorization') !== `Bearer ${secret}`)
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  return null;
+};
 
-  let body: unknown;
+interface InvoiceArgs {
+  clientName: string;
+  clientEmail?: string;
+  serviceLabel: string;
+  periodLabel?: string;
+  unitPrice: number;
+  discount?: number;
+  invoiceDate?: string;
+}
+
+const parseJsonBody = async (request: Request): Promise<unknown | Response> => {
   try {
-    body = await request.json();
+    return await request.json();
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
   }
-  const args = body as {
-    clientName?: string;
-    clientEmail?: string;
-    serviceLabel?: string;
-    periodLabel?: string;
-    unitPrice?: number;
-    discount?: number;
-    invoiceDate?: string;
-  };
+};
+
+const validateInvoiceArgs = (body: unknown): InvoiceArgs | Response => {
+  const args = body as Partial<InvoiceArgs>;
   if (!args.clientName || !args.serviceLabel || typeof args.unitPrice !== 'number') {
     return new Response(JSON.stringify({ error: 'clientName, serviceLabel and unitPrice are required' }), {
       status: 400,
     });
   }
+  return args as InvoiceArgs;
+};
+
+const jsonResponse = (data: object, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
+
+/**
+ * POST /import-invoice — bearer-authenticated entry point for external
+ * systems.
+ */
+export const importInvoice = httpAction(async (ctx, request) => {
+  const authError = checkAuth(request);
+  if (authError) return authError;
+
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const args = validateInvoiceArgs(body);
+  if (args instanceof Response) return args;
 
   const result = await ctx.runMutation(internal.importInvoice.createExternal, {
     clientName: args.clientName,
@@ -172,11 +225,7 @@ export const importInvoice = httpAction(async (ctx, request) => {
     discount: args.discount,
     invoiceDate: args.invoiceDate,
   });
-
-  return new Response(JSON.stringify({ ok: true, ...result }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return jsonResponse({ ok: true, ...result });
 });
 
 /**
@@ -186,17 +235,11 @@ export const importInvoice = httpAction(async (ctx, request) => {
  * document. Called by the Job Conciergerie billing cron right after import.
  */
 export const sendInvoiceEmailHttp = httpAction(async (ctx, request) => {
-  const secret = process.env.IMS_IMPORT_SECRET;
-  if (!secret) return new Response(JSON.stringify({ error: 'Server misconfigured' }), { status: 500 });
-  if (request.headers.get('authorization') !== `Bearer ${secret}`)
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const authError = checkAuth(request);
+  if (authError) return authError;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
-  }
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
   const invoiceNumber = (body as { invoiceNumber?: string }).invoiceNumber;
   if (!invoiceNumber) {
     return new Response(JSON.stringify({ error: 'invoiceNumber is required' }), { status: 400 });
@@ -214,8 +257,78 @@ export const sendInvoiceEmailHttp = httpAction(async (ctx, request) => {
     return new Response(JSON.stringify({ error: 'Send failed' }), { status: 502 });
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
+  return jsonResponse({ ok: true });
+});
+
+/**
+ * POST /test-invoice-pdf — bearer-authenticated. Creates/refreshes the
+ * client's TEST- draft invoice, generates its PDF and returns a storage URL —
+ * powers the JC admin "Tester le PDF" button. Nothing is emailed.
+ */
+export const testInvoicePdf = httpAction(async (ctx, request) => {
+  const authError = checkAuth(request);
+  if (authError) return authError;
+
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const args = validateInvoiceArgs(body);
+  if (args instanceof Response) return args;
+
+  const { invoiceId, invoiceNumber } = await ctx.runMutation(internal.importInvoice.createExternal, {
+    clientName: args.clientName,
+    clientEmail: args.clientEmail,
+    serviceLabel: args.serviceLabel,
+    periodLabel: args.periodLabel,
+    unitPrice: args.unitPrice,
+    discount: args.discount,
+    invoiceDate: args.invoiceDate,
+    test: true,
   });
+  const { storageId } = await ctx.runAction(internal.pdf.generateInvoicePDFInternal, { invoiceId });
+  const pdfUrl = await ctx.runAction(api.pdf.getStorageUrl, { storageId });
+
+  return jsonResponse({ ok: true, invoiceNumber, pdfUrl });
+});
+
+/**
+ * POST /test-invoice-email — bearer-authenticated. Same as /test-invoice-pdf
+ * plus the full client-facing send flow, except the recipient is overridden
+ * to `recipientEmail` — the real client is never emailed, the owner bcc is
+ * skipped and the TEST- draft stays unsent.
+ */
+export const testInvoiceEmail = httpAction(async (ctx, request) => {
+  const authError = checkAuth(request);
+  if (authError) return authError;
+
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const { recipientEmail } = body as { recipientEmail?: string };
+  if (!recipientEmail) {
+    return new Response(JSON.stringify({ error: 'recipientEmail is required' }), { status: 400 });
+  }
+  const args = validateInvoiceArgs(body);
+  if (args instanceof Response) return args;
+
+  const { invoiceId, invoiceNumber } = await ctx.runMutation(internal.importInvoice.createExternal, {
+    clientName: args.clientName,
+    clientEmail: args.clientEmail,
+    serviceLabel: args.serviceLabel,
+    periodLabel: args.periodLabel,
+    unitPrice: args.unitPrice,
+    discount: args.discount,
+    invoiceDate: args.invoiceDate,
+    test: true,
+  });
+
+  try {
+    await ctx.runAction(internal.email.sendInvoiceEmailInternal, {
+      invoiceId,
+      testRecipient: recipientEmail,
+    });
+  } catch (error) {
+    console.error('testInvoiceEmail failed:', error);
+    return new Response(JSON.stringify({ error: 'Send failed' }), { status: 502 });
+  }
+
+  return jsonResponse({ ok: true, invoiceNumber });
 });

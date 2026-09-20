@@ -9,7 +9,12 @@ import type { Id } from './_generated/dataModel';
 // path and the server-to-server HTTP endpoint can use it. Generates the PDF
 // (same model as everywhere), emails it to the client with the owner in bcc,
 // and marks the invoice sent.
-const sendInvoiceEmailCore = async (ctx: ActionCtx, invoiceId: Id<'invoices'>, customMessage?: string) => {
+const sendInvoiceEmailCore = async (
+  ctx: ActionCtx,
+  invoiceId: Id<'invoices'>,
+  customMessage?: string,
+  testRecipient?: string,
+) => {
   // Get invoice data with all relations
   const invoice = await ctx.runQuery(internal.invoices.getInvoiceByIdInternal, { id: invoiceId });
 
@@ -79,8 +84,10 @@ ${invoice.userProfile.name.split(' ')[0]}
   try {
     await transporter.sendMail({
       from: `"${invoice.userProfile.name}" <${process.env.SMTP_FROM_EMAIL}>`,
-      to: invoice.client.email,
-      bcc: invoice.userProfile.email,
+      // Test sends (JC admin) go to the given address only — never the client,
+      // and the owner bcc is skipped since the admin IS the owner.
+      to: testRecipient ?? invoice.client.email,
+      ...(testRecipient ? {} : { bcc: invoice.userProfile.email }),
       subject: emailSubject,
       text: emailBody,
       attachments: [
@@ -93,8 +100,11 @@ ${invoice.userProfile.name.split(' ')[0]}
     });
 
     // Mark invoice as sent (internal mutation — works for both the authed
-    // UI path and the unauthenticated HTTP send).
-    await ctx.runMutation(internal.invoices.markSentInternal, { id: invoiceId });
+    // UI path and the unauthenticated HTTP send). Test sends leave the TEST-
+    // draft unsent so it can be re-tested.
+    if (!testRecipient) {
+      await ctx.runMutation(internal.invoices.markSentInternal, { id: invoiceId });
+    }
 
     return { success: true, message: 'Email envoyé avec succès!' };
   } catch (error) {
@@ -124,6 +134,7 @@ export const sendInvoiceEmailInternal = internalAction({
   args: {
     invoiceId: v.id('invoices'),
     customMessage: v.optional(v.string()),
+    testRecipient: v.optional(v.string()),
   },
-  handler: async (ctx, args) => sendInvoiceEmailCore(ctx, args.invoiceId, args.customMessage),
+  handler: async (ctx, args) => sendInvoiceEmailCore(ctx, args.invoiceId, args.customMessage, args.testRecipient),
 });
