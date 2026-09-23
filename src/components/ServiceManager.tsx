@@ -81,7 +81,7 @@ export function ServiceManager() {
                       )}
                     </p>
                     <span
-                      onClick={() => void handleToggleStatus(service._id, service.isActive)}
+                      onClick={() => void handleToggleStatus(service._id, service.isActive ?? true)}
                       className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 cursor-pointer ${
                         service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}

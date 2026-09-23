@@ -12,7 +12,7 @@ interface ServiceEditorModalProps {
     _id: Id<'services'>;
     label: string;
     defaultPrice: number;
-    isActive: boolean;
+    isActive?: boolean;
   } | null;
 }
 
@@ -31,7 +31,7 @@ export function ServiceEditorModal({ isOpen, onClose, service }: ServiceEditorMo
       setFormData({
         label: service.label,
         defaultPrice: service.defaultPrice,
-        isActive: service.isActive,
+        isActive: service.isActive ?? true,
       });
     } else {
       setFormData({ label: '', defaultPrice: 0, isActive: true });

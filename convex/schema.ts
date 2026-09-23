@@ -12,6 +12,11 @@ const applicationTables = {
     iban: v.string(),
     bic: v.string(),
     bank: v.string(),
+    // Mentions légales facture B2B (alignées sur Job Conciergerie).
+    tel: v.optional(v.string()),
+    apeCode: v.optional(v.string()), // Code APE/NAF — 4 chiffres + 1 lettre
+    immatriculation: v.optional(v.string()), // RCS/RM si activité commerciale/artisanale
+    bankAddress: v.optional(v.string()),
   }).index('by_user', ['userId']),
 
   clients: defineTable({
@@ -21,6 +26,8 @@ const applicationTables = {
     address: v.string(),
     email: v.string(),
     legalForm: v.string(), // "SARL", "EURL", "Micro-entrepreneur"
+    siren: v.optional(v.string()), // 9 chiffres — obligatoire pour un client pro
+    tvaNumber: v.optional(v.string()), // N° TVA intracommunautaire
     isActive: v.optional(v.boolean()),
   }).index('by_user', ['userId']),
 
@@ -36,6 +43,9 @@ const applicationTables = {
     clientId: v.id('clients'),
     invoiceNumber: v.string(),
     invoiceDate: v.number(),
+    // Fin de la prestation — mention obligatoire (dernier jour du mois
+    // facturé pour les imports Job Conciergerie).
+    serviceEndDate: v.optional(v.number()),
     paymentDate: v.optional(v.number()), // null for sent/draft, set to payment date when paid
     status: v.string(), // "draft", "sent", "paid"
     totalAmount: v.number(),

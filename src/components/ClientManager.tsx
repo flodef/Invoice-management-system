@@ -84,7 +84,7 @@ export function ClientManager() {
                     </a>
                     <p className="text-gray-600 text-sm mt-1 break-words overflow-hidden">{client.address}</p>
                     <span
-                      onClick={() => void handleToggleStatus(client._id, client.isActive)}
+                      onClick={() => void handleToggleStatus(client._id, client.isActive ?? true)}
                       className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 cursor-pointer ${
                         client.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}

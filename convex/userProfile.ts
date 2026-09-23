@@ -26,6 +26,10 @@ export const updateUserProfile = mutation({
     iban: v.string(),
     bic: v.string(),
     bank: v.string(),
+    tel: v.optional(v.string()),
+    apeCode: v.optional(v.string()),
+    immatriculation: v.optional(v.string()),
+    bankAddress: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

@@ -15,6 +15,10 @@ export function ProfileSettings() {
     iban: '',
     bic: '',
     bank: '',
+    tel: '',
+    apeCode: '',
+    immatriculation: '',
+    bankAddress: '',
   });
 
   useEffect(() => {
@@ -27,6 +31,10 @@ export function ProfileSettings() {
         iban: userProfile.iban || '',
         bic: userProfile.bic || '',
         bank: userProfile.bank || '',
+        tel: userProfile.tel || '',
+        apeCode: userProfile.apeCode || '',
+        immatriculation: userProfile.immatriculation || '',
+        bankAddress: userProfile.bankAddress || '',
       });
     }
   }, [userProfile]);
@@ -99,6 +107,42 @@ export function ProfileSettings() {
           />
         </div>
 
+        {/* Mentions légales — APE/NAF, immatriculation, téléphone */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="md:w-1/4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Code APE/NAF</label>
+            <input
+              type="text"
+              value={formData.apeCode}
+              onChange={e => setFormData({ ...formData, apeCode: e.target.value })}
+              placeholder="6201Z"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Immatriculation RCS/RM (si applicable)
+            </label>
+            <input
+              type="text"
+              value={formData.immatriculation}
+              onChange={e => setFormData({ ...formData, immatriculation: e.target.value })}
+              placeholder="RCS Brest 123 456 789"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="md:w-1/4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+            <input
+              type="tel"
+              value={formData.tel}
+              onChange={e => setFormData({ ...formData, tel: e.target.value })}
+              placeholder="06 12 34 56 78"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
         {/* IBAN & BIC on the same row */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -125,17 +169,29 @@ export function ProfileSettings() {
           </div>
         </div>
 
-        {/* Bank name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Banque</label>
-          <input
-            type="text"
-            value={formData.bank}
-            onChange={e => setFormData({ ...formData, bank: e.target.value })}
-            placeholder="BNP Paribas"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
+        {/* Bank name + address */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="md:w-1/3">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Banque</label>
+            <input
+              type="text"
+              value={formData.bank}
+              onChange={e => setFormData({ ...formData, bank: e.target.value })}
+              placeholder="BNP Paribas"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Adresse de la banque</label>
+            <input
+              type="text"
+              value={formData.bankAddress}
+              onChange={e => setFormData({ ...formData, bankAddress: e.target.value })}
+              placeholder="16 bd des Italiens, 75009 Paris"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         {/* Standard width save button */}

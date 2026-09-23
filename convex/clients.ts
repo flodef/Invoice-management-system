@@ -25,6 +25,8 @@ export const saveClient = mutation({
     address: v.string(),
     email: v.string(),
     legalForm: v.string(),
+    siren: v.optional(v.string()),
+    tvaNumber: v.optional(v.string()),
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {

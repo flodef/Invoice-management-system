@@ -35,11 +35,16 @@ export const createExternal = internalMutation({
   args: {
     clientName: v.string(),
     clientEmail: v.optional(v.string()),
+    clientAddress: v.optional(v.string()),
+    clientLegalForm: v.optional(v.string()),
+    clientSiren: v.optional(v.string()),
+    clientTvaNumber: v.optional(v.string()),
     serviceLabel: v.string(), // stable service name, e.g. "Abonnement Job Conciergerie — Pro"
     periodLabel: v.optional(v.string()), // e.g. "08/2026" — appended to the item label
     unitPrice: v.number(),
     discount: v.optional(v.number()),
     invoiceDate: v.optional(v.string()), // ISO date
+    serviceEndDate: v.optional(v.string()), // ISO date — fin de prestation
     test: v.optional(v.boolean()), // admin testing — TEST- draft, see below
   },
   handler: async (ctx, args) => {
@@ -47,7 +52,9 @@ export const createExternal = internalMutation({
     if (!profile) throw new Error('No user profile configured');
     const userId = profile.userId;
 
-    // Client: normalized match first, create a minimal record otherwise.
+    // Client: normalized match first, create a record otherwise. An existing
+    // record is only ENRICHED — fields the payload provides fill the gaps,
+    // never overwrite what the user typed by hand.
     const clients = await ctx.db
       .query('clients')
       .withIndex('by_user', q => q.eq('userId', userId))
@@ -59,11 +66,22 @@ export const createExternal = internalMutation({
         userId,
         name: args.clientName,
         contactName: '',
-        address: '',
+        address: args.clientAddress ?? '',
         email: args.clientEmail ?? '',
-        legalForm: '',
+        legalForm: args.clientLegalForm ?? '',
+        siren: args.clientSiren,
+        tvaNumber: args.clientTvaNumber,
         isActive: true,
       });
+    } else {
+      const existing = clients.find(c => c._id === clientId)!;
+      const patch: Record<string, string> = {};
+      if (!existing.address && args.clientAddress) patch.address = args.clientAddress;
+      if (!existing.email && args.clientEmail) patch.email = args.clientEmail;
+      if (!existing.legalForm && args.clientLegalForm) patch.legalForm = args.clientLegalForm;
+      if (!existing.siren && args.clientSiren) patch.siren = args.clientSiren;
+      if (!existing.tvaNumber && args.clientTvaNumber) patch.tvaNumber = args.clientTvaNumber;
+      if (Object.keys(patch).length > 0) await ctx.db.patch(clientId, patch);
     }
 
     // Service: stable label (no period — the billed month lives on the item).
@@ -83,6 +101,7 @@ export const createExternal = internalMutation({
 
     const itemLabel = args.periodLabel ? `${args.serviceLabel} (${args.periodLabel})` : args.serviceLabel;
     const invoiceDate = args.invoiceDate ? new Date(args.invoiceDate).getTime() : Date.now();
+    const serviceEndDate = args.serviceEndDate ? new Date(args.serviceEndDate).getTime() : undefined;
     const d = new Date(invoiceDate);
     const prefix = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
 
@@ -115,6 +134,7 @@ export const createExternal = internalMutation({
       if (existingTest) {
         await ctx.db.patch(existingTest._id, {
           invoiceDate,
+          serviceEndDate,
           paymentDate: calculatePaymentDate(invoiceDate),
           totalAmount: total,
           items,
@@ -126,6 +146,7 @@ export const createExternal = internalMutation({
         clientId,
         invoiceNumber: testNumber,
         invoiceDate,
+        serviceEndDate,
         paymentDate: calculatePaymentDate(invoiceDate),
         status: 'draft',
         source: 'job-conciergerie-test',
@@ -151,6 +172,7 @@ export const createExternal = internalMutation({
       clientId,
       invoiceNumber,
       invoiceDate,
+      serviceEndDate,
       paymentDate: calculatePaymentDate(invoiceDate),
       status: 'sent',
       source: 'job-conciergerie',
@@ -175,11 +197,16 @@ const checkAuth = (request: Request): Response | null => {
 interface InvoiceArgs {
   clientName: string;
   clientEmail?: string;
+  clientAddress?: string;
+  clientLegalForm?: string;
+  clientSiren?: string;
+  clientTvaNumber?: string;
   serviceLabel: string;
   periodLabel?: string;
   unitPrice: number;
   discount?: number;
   invoiceDate?: string;
+  serviceEndDate?: string;
 }
 
 const parseJsonBody = async (request: Request): Promise<unknown> => {
@@ -219,11 +246,16 @@ export const importInvoice = httpAction(async (ctx, request) => {
   const result = await ctx.runMutation(internal.importInvoice.createExternal, {
     clientName: args.clientName,
     clientEmail: args.clientEmail,
+    clientAddress: args.clientAddress,
+    clientLegalForm: args.clientLegalForm,
+    clientSiren: args.clientSiren,
+    clientTvaNumber: args.clientTvaNumber,
     serviceLabel: args.serviceLabel,
     periodLabel: args.periodLabel,
     unitPrice: args.unitPrice,
     discount: args.discount,
     invoiceDate: args.invoiceDate,
+    serviceEndDate: args.serviceEndDate,
   });
   return jsonResponse({ ok: true, ...result });
 });
@@ -277,11 +309,16 @@ export const testInvoicePdf = httpAction(async (ctx, request) => {
   const { invoiceId, invoiceNumber } = await ctx.runMutation(internal.importInvoice.createExternal, {
     clientName: args.clientName,
     clientEmail: args.clientEmail,
+    clientAddress: args.clientAddress,
+    clientLegalForm: args.clientLegalForm,
+    clientSiren: args.clientSiren,
+    clientTvaNumber: args.clientTvaNumber,
     serviceLabel: args.serviceLabel,
     periodLabel: args.periodLabel,
     unitPrice: args.unitPrice,
     discount: args.discount,
     invoiceDate: args.invoiceDate,
+    serviceEndDate: args.serviceEndDate,
     test: true,
   });
   const { storageId } = await ctx.runAction(internal.pdf.generateInvoicePDFInternal, { invoiceId });
@@ -312,11 +349,16 @@ export const testInvoiceEmail = httpAction(async (ctx, request) => {
   const { invoiceId, invoiceNumber } = await ctx.runMutation(internal.importInvoice.createExternal, {
     clientName: args.clientName,
     clientEmail: args.clientEmail,
+    clientAddress: args.clientAddress,
+    clientLegalForm: args.clientLegalForm,
+    clientSiren: args.clientSiren,
+    clientTvaNumber: args.clientTvaNumber,
     serviceLabel: args.serviceLabel,
     periodLabel: args.periodLabel,
     unitPrice: args.unitPrice,
     discount: args.discount,
     invoiceDate: args.invoiceDate,
+    serviceEndDate: args.serviceEndDate,
     test: true,
   });
 

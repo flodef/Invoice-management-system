@@ -15,7 +15,9 @@ interface ClientEditorModalProps {
     address: string;
     email: string;
     legalForm?: string;
-    isActive: boolean;
+    siren?: string;
+    tvaNumber?: string;
+    isActive?: boolean;
   } | null;
 }
 
@@ -28,6 +30,8 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
     address: '',
     email: '',
     legalForm: 'SARL',
+    siren: '',
+    tvaNumber: '',
     isActive: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,10 +44,21 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
         address: client.address,
         email: client.email,
         legalForm: client.legalForm || 'SARL',
-        isActive: client.isActive,
+        siren: client.siren || '',
+        tvaNumber: client.tvaNumber || '',
+        isActive: client.isActive ?? true,
       });
     } else {
-      setFormData({ name: '', contactName: '', address: '', email: '', legalForm: 'SARL', isActive: true });
+      setFormData({
+        name: '',
+        contactName: '',
+        address: '',
+        email: '',
+        legalForm: 'SARL',
+        siren: '',
+        tvaNumber: '',
+        isActive: true,
+      });
     }
   }, [client]);
 
@@ -139,18 +154,46 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
               disabled={isSubmitting}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Forme juridique</label>
-            <select
-              value={formData.legalForm}
-              onChange={e => setFormData({ ...formData, legalForm: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
-              disabled={isSubmitting}
-            >
-              <option value="SARL">SARL</option>
-              <option value="EURL">EURL</option>
-              <option value="Micro-entrepreneur">Micro-entrepreneur</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Forme juridique</label>
+              <select
+                value={formData.legalForm}
+                onChange={e => setFormData({ ...formData, legalForm: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                disabled={isSubmitting}
+              >
+                <option value="SARL">SARL</option>
+                <option value="EURL">EURL</option>
+                <option value="SASU">SASU</option>
+                <option value="SAS">SAS</option>
+                <option value="EI">Entrepreneur individuel</option>
+                <option value="Micro-entrepreneur">Micro-entrepreneur</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">SIREN</label>
+              <input
+                type="text"
+                value={formData.siren}
+                onChange={e => setFormData({ ...formData, siren: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                placeholder="9 chiffres"
+                inputMode="numeric"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">N° TVA intracommunautaire</label>
+              <input
+                type="text"
+                value={formData.tvaNumber}
+                onChange={e => setFormData({ ...formData, tvaNumber: e.target.value })}
+                placeholder="FR00123456789"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <button

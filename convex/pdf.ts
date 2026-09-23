@@ -78,6 +78,16 @@ export const generateInvoicePDFInternal = internalAction({
   handler: async (ctx, args) => generateInvoicePDFCore(ctx, args.invoiceId),
 });
 
+// Mise en page alignée sur Job Conciergerie — toutes les mentions
+// obligatoires d'une facture B2B française : émetteur EI (nom + mention,
+// adresse, SIREN+SIRET, code APE, immatriculation, contact), client pro
+// (raison sociale + forme juridique, siège, SIREN, n° TVA), facture (n°
+// chronologique, émission, fin de prestation), « TVA non applicable, art.
+// 293 B du CGI », conditions de paiement (échéance, escompte néant,
+// pénalités BCE + 10 pts, indemnité 40 €).
+const PAGE_LEFT = 20;
+const CLIENT_X = 120;
+
 function createInvoicePDF(invoice: any): Uint8Array {
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('fr-FR', {
@@ -86,6 +96,9 @@ function createInvoicePDF(invoice: any): Uint8Array {
       day: '2-digit',
     });
   };
+
+  const formatMonthYear = (timestamp: number) =>
+    new Date(timestamp).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' });
 
   const formatCurrency = (amount: number) => {
     // Remove all whitespace characters (including non-breaking spaces) from the formatted string
@@ -98,74 +111,92 @@ function createInvoicePDF(invoice: any): Uint8Array {
       .replace(/\s/g, '');
   };
 
+  const profile = invoice.userProfile;
+  const client = invoice.client;
+
   // Create new PDF document
   const doc = new jsPDF();
-
-  // Set font
   doc.setFont('helvetica');
 
-  // Header - Company Info
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(invoice.userProfile.name, 20, 30);
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(invoice.userProfile.email, 20, 40);
-
-  // Handle multiline address
-  const companyAddress = invoice.userProfile.address.split('\n');
-  let yPos = 45;
-  companyAddress.forEach((line: string) => {
-    const lineParts = splitLongText(line);
-    lineParts.forEach((part: string) => {
-      doc.text(part, 20, yPos);
-      yPos += 5;
-    });
-  });
-
-  doc.text(`N° SIRET: ${invoice.userProfile.freelanceId}`, 20, yPos + 5);
-
-  // Header - Client Info
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Facturer à:', 120, 30);
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(invoice.client?.name || 'Client inconnu', 120, 40);
+  // ─── Émetteur (l'entrepreneur individuel) ───
+  doc.setFontSize(15).setFont('helvetica', 'bold');
+  doc.text(profile.name, PAGE_LEFT, 24);
+  doc.setFontSize(9).setFont('helvetica', 'italic');
+  doc.text('Entrepreneur individuel (EI)', PAGE_LEFT, 30);
 
   doc.setFont('helvetica', 'normal');
+  let y = 36;
+  for (const line of String(profile.address ?? '').split('\n'))
+    for (const part of splitLongText(line, 52)) {
+      doc.text(part, PAGE_LEFT, y);
+      y += 4.5;
+    }
+  const siret = String(profile.freelanceId ?? '');
+  doc.text(`SIREN : ${siret.slice(0, 9)} — SIRET : ${siret}`, PAGE_LEFT, y + 1);
+  y += 5.5;
+  if (profile.apeCode) {
+    doc.text(`Code APE/NAF : ${profile.apeCode}`, PAGE_LEFT, y + 1);
+    y += 5.5;
+  }
+  if (profile.immatriculation) {
+    doc.text(`Immatriculation : ${profile.immatriculation}`, PAGE_LEFT, y + 1);
+    y += 5.5;
+  }
+  const contact = [profile.email, profile.tel].filter(Boolean).join(' — ');
+  if (contact) {
+    doc.text(contact, PAGE_LEFT, y + 1);
+    y += 5.5;
+  }
+  const emitterEnd = y;
 
-  // Process client address with line splitting
-  const clientAddress = (invoice.client?.address || 'Adresse inconnue').split('\n');
-  yPos = 45;
-  clientAddress.forEach((line: string) => {
-    const lineParts = splitLongText(line);
-    lineParts.forEach((part: string) => {
-      doc.text(part, 120, yPos);
-      yPos += 5;
-    });
-  });
+  // ─── Client (société) ───
+  doc.setFontSize(11).setFont('helvetica', 'bold');
+  doc.text('Facturé à :', CLIENT_X, 24);
+  doc.setFontSize(10);
+  doc.text(`${client?.legalForm ? `${client.legalForm} ` : ''}${client?.name || 'Client inconnu'}`, CLIENT_X, 32);
+  doc.setFontSize(9).setFont('helvetica', 'normal');
+  let cy = 38;
+  for (const line of String(client?.address || 'Adresse inconnue').split('\n'))
+    for (const part of splitLongText(line, 40)) {
+      doc.text(part, CLIENT_X, cy);
+      cy += 4.5;
+    }
+  if (client?.siren) {
+    doc.text(`SIREN : ${client.siren}`, CLIENT_X, cy + 1);
+    cy += 5.5;
+  }
+  if (client?.tvaNumber) {
+    doc.text(`N° TVA : ${client.tvaNumber}`, CLIENT_X, cy + 1);
+    cy += 5.5;
+  }
+  const clientEnd = cy;
 
-  if (invoice.client?.legalForm) {
-    doc.text(`Forme juridique: ${invoice.client.legalForm}`, 120, yPos + 5);
+  // ─── En-tête de facture ───
+  let body = Math.max(emitterEnd, clientEnd) + 12;
+  doc.setFontSize(17).setFont('helvetica', 'bold');
+  doc.text(`Facture N° ${invoice.invoiceNumber}`, PAGE_LEFT, body);
+  doc.setFontSize(9).setFont('helvetica', 'normal');
+  body += 6;
+  doc.text(`Date d'émission : ${formatDate(invoice.invoiceDate)}`, PAGE_LEFT, body);
+  body += 5;
+  if (invoice.serviceEndDate) {
+    doc.text(
+      `Prestation : ${formatMonthYear(invoice.serviceEndDate)} (fin le ${formatDate(invoice.serviceEndDate)})`,
+      PAGE_LEFT,
+      body,
+    );
+    body += 5;
   }
 
-  // Invoice Details
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Facture N°${invoice.invoiceNumber}`, 20, 90);
-
-  // Items Table
-  const tableStartY = 100;
-  const colPositions = [20, 135, 145, 160, 175];
+  // ─── Tableau des lignes (avec remise — spécifique IMS) ───
+  body += 5;
+  const tableStartY = body;
+  const colPositions = [PAGE_LEFT, 135, 145, 160, 175];
 
   // Table Header
   doc.setFillColor(245, 245, 245);
-  doc.rect(20, tableStartY, MAX_PAGE_WIDTH, 8, 'F');
+  doc.rect(PAGE_LEFT, tableStartY, MAX_PAGE_WIDTH, 8, 'F');
 
-  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text('Description', colPositions[0] + 2, tableStartY + 5);
   doc.text('Qté', colPositions[1] + 2, tableStartY + 5);
@@ -175,7 +206,7 @@ function createInvoicePDF(invoice: any): Uint8Array {
 
   // Table borders
   doc.setDrawColor(221, 221, 221);
-  doc.rect(20, tableStartY, MAX_PAGE_WIDTH, 8);
+  doc.rect(PAGE_LEFT, tableStartY, MAX_PAGE_WIDTH, 8);
 
   // Table Items
   doc.setFont('helvetica', 'normal');
@@ -187,7 +218,7 @@ function createInvoicePDF(invoice: any): Uint8Array {
     // Row background (alternating)
     if (index % 2 === 1) {
       doc.setFillColor(250, 250, 250);
-      doc.rect(20, currentY, MAX_PAGE_WIDTH, rowHeight, 'F');
+      doc.rect(PAGE_LEFT, currentY, MAX_PAGE_WIDTH, rowHeight, 'F');
     }
 
     // Item data
@@ -205,59 +236,52 @@ function createInvoicePDF(invoice: any): Uint8Array {
     doc.text(formatCurrency(item.total), colPositions[4] + 2, currentY + 5);
 
     // Row border
-    doc.rect(20, currentY, MAX_PAGE_WIDTH, rowHeight);
+    doc.rect(PAGE_LEFT, currentY, MAX_PAGE_WIDTH, rowHeight);
 
     currentY += rowHeight;
   });
 
-  // Date and discount info below table
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Date de facturation: ${formatDate(invoice.invoiceDate)}`, 20, currentY + 15);
-  doc.text(`Date de règlement: ${formatDate(invoice.paymentDate)}`, 20, currentY + 20);
-  doc.text(`Conditions d'escompte : Pas d'escompte pour règlement anticipé`, 20, currentY + 25);
+  // ─── Totaux ───
+  currentY += 8;
+  doc.setDrawColor(0, 0, 0).rect(CLIENT_X, currentY, 70, 9);
+  doc.setFontSize(11).setFont('helvetica', 'bold');
+  doc.text(`Total à payer : ${formatCurrency(invoice.totalAmount)}`, CLIENT_X + 3, currentY + 6);
+  doc.setFontSize(8).setFont('helvetica', 'normal');
+  doc.text(
+    'TVA non applicable, art. 293 B du CGI — montant en franchise de TVA (HT = TTC).',
+    PAGE_LEFT + MAX_PAGE_WIDTH,
+    currentY + 14,
+    { align: 'right' },
+  );
+  currentY += 22;
 
-  // Total with box
-  const totalBoxX = MAX_PAGE_WIDTH - 25;
-  const totalBoxY = currentY + 11;
-  const totalBoxWidth = 45;
-  const totalBoxHeight = 9;
-
-  // Draw black box around total
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(totalBoxX, totalBoxY, totalBoxWidth, totalBoxHeight);
-
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Total HT: ${formatCurrency(invoice.totalAmount)}`, totalBoxX + 5, currentY + 17);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`TVA non applicable, art. 293 B du CGI`, totalBoxX - 2, currentY + 23);
-
-  // Payment Info with border
-  const paymentBoxX = 20;
-  const paymentBoxY = currentY + 125;
-  const paymentBoxHeight = 25;
-  const paymentBoxWidth = MAX_PAGE_WIDTH;
-
-  // Draw black box around payment info
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(paymentBoxX, paymentBoxY, paymentBoxWidth, paymentBoxHeight);
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Paiement par virement bancaire', 22, currentY + 130);
-
-  doc.setFont('helvetica', 'normal');
-  doc.text(`IBAN: ${invoice.userProfile.iban}`, 22, currentY + 137);
-  doc.text(`BIC: ${invoice.userProfile.bic}`, 22, currentY + 142);
-  doc.text(`Banque: ${invoice.userProfile.bank}`, 22, currentY + 147);
-
+  // ─── Conditions de paiement (obligatoires en B2B) — encart ancré en bas
+  // de page, nouvelle page si le contenu le fait déborder.
+  let payTop = Math.max(currentY, 253);
+  if (payTop + 34 > 297) {
+    doc.addPage();
+    payTop = 20;
+  }
+  doc.setDrawColor(0, 0, 0).rect(PAGE_LEFT, payTop, MAX_PAGE_WIDTH, 34);
+  doc.setFontSize(10).setFont('helvetica', 'bold');
+  doc.text('Paiement par virement bancaire', PAGE_LEFT + 2, payTop + 6);
+  doc.setFontSize(9).setFont('helvetica', 'normal');
+  doc.text(`IBAN : ${profile.iban}`, PAGE_LEFT + 2, payTop + 12);
+  doc.text(`BIC : ${profile.bic}`, PAGE_LEFT + 2, payTop + 17);
+  const bank = [profile.bank, profile.bankAddress].filter(Boolean).join(' — ');
+  if (bank) doc.text(`Banque : ${bank}`, PAGE_LEFT + 2, payTop + 22);
+  if (invoice.paymentDate) doc.text(`Date d'échéance : ${formatDate(invoice.paymentDate)}`, CLIENT_X, payTop + 12);
+  doc.text('Escompte pour paiement anticipé : néant', CLIENT_X, payTop + 17);
   doc.setFontSize(8);
   doc.text(
-    `Pour tout professionnel, en cas de retard de paiement, application de l’indemnité forfaitaire légale pour frais de recouvrement : 40,00 €`,
-    21,
-    currentY + 155,
+    'En cas de retard de paiement : pénalités au taux appliqué par la BCE à son opération de',
+    PAGE_LEFT + 2,
+    payTop + 28,
+  );
+  doc.text(
+    'refinancement le plus récent, majoré de 10 points. Indemnité forfaitaire de recouvrement : 40,00 €.',
+    PAGE_LEFT + 2,
+    payTop + 32,
   );
 
   // Return PDF as Uint8Array
