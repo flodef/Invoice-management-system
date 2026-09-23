@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
+import { AddressFields } from './AddressFields';
+import { formatStructuredAddress, parseStructuredAddress } from '../utils/address';
 
 export function ProfileSettings() {
   const userProfile = useQuery(api.userProfile.getUserProfile);
@@ -11,6 +13,8 @@ export function ProfileSettings() {
     name: '',
     email: '',
     address: '',
+    postalCode: '',
+    city: '',
     freelanceId: '',
     iban: '',
     bic: '',
@@ -23,10 +27,13 @@ export function ProfileSettings() {
 
   useEffect(() => {
     if (userProfile) {
+      const parsed = parseStructuredAddress(userProfile.address || '');
       setFormData({
         name: userProfile.name || '',
         email: userProfile.email || '',
-        address: userProfile.address || '',
+        address: parsed.street,
+        postalCode: parsed.postalCode,
+        city: parsed.city,
         freelanceId: userProfile.freelanceId || '',
         iban: userProfile.iban || '',
         bic: userProfile.bic || '',
@@ -49,7 +56,11 @@ export function ProfileSettings() {
     }
 
     try {
-      await updateProfile(formData);
+      const { postalCode, city, ...rest } = formData;
+      await updateProfile({
+        ...rest,
+        address: formatStructuredAddress({ street: formData.address, postalCode, city }),
+      });
       toast.success('Profil mis à jour avec succès!');
     } catch {
       toast.error('Échec de la mise à jour du profil');
@@ -95,17 +106,17 @@ export function ProfileSettings() {
           </div>
         </div>
 
-        {/* Address as one-liner */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Adresse de l'entreprise</label>
-          <input
-            type="text"
-            value={formData.address}
-            onChange={e => setFormData({ ...formData, address: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+        {/* Adresse structurée : rue + code postal → commune (geo.api.gouv.fr) */}
+        <AddressFields
+          street={formData.address}
+          postalCode={formData.postalCode}
+          city={formData.city}
+          onStreet={v => setFormData({ ...formData, address: v })}
+          onPostalCode={v => setFormData({ ...formData, postalCode: v })}
+          onCity={v => setFormData({ ...formData, city: v })}
+          streetLabel="Adresse de l'entreprise (rue)"
+          required
+        />
 
         {/* Mentions légales — APE/NAF, immatriculation, téléphone */}
         <div className="flex flex-col md:flex-row gap-4">

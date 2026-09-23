@@ -4,6 +4,8 @@ import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import { Id } from '../../convex/_generated/dataModel';
+import { AddressFields } from './AddressFields';
+import { formatStructuredAddress, parseStructuredAddress } from '../utils/address';
 
 interface ClientEditorModalProps {
   isOpen: boolean;
@@ -28,6 +30,8 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
     name: '',
     contactName: '',
     address: '',
+    postalCode: '',
+    city: '',
     email: '',
     legalForm: 'SARL',
     siren: '',
@@ -37,29 +41,19 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetFormData = useCallback(() => {
-    if (client) {
-      setFormData({
-        name: client.name,
-        contactName: client.contactName || '',
-        address: client.address,
-        email: client.email,
-        legalForm: client.legalForm || 'SARL',
-        siren: client.siren || '',
-        tvaNumber: client.tvaNumber || '',
-        isActive: client.isActive ?? true,
-      });
-    } else {
-      setFormData({
-        name: '',
-        contactName: '',
-        address: '',
-        email: '',
-        legalForm: 'SARL',
-        siren: '',
-        tvaNumber: '',
-        isActive: true,
-      });
-    }
+    const parsed = parseStructuredAddress(client?.address ?? '');
+    setFormData({
+      name: client?.name ?? '',
+      contactName: client?.contactName || '',
+      address: parsed.street,
+      postalCode: parsed.postalCode,
+      city: parsed.city,
+      email: client?.email ?? '',
+      legalForm: client?.legalForm || 'SARL',
+      siren: client?.siren || '',
+      tvaNumber: client?.tvaNumber || '',
+      isActive: client?.isActive ?? true,
+    });
   }, [client]);
 
   useEffect(() => {
@@ -70,9 +64,11 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const { postalCode, city, ...rest } = formData;
       await saveClient({
         id: client?._id || undefined,
-        ...formData,
+        ...rest,
+        address: formatStructuredAddress({ street: formData.address, postalCode, city }),
       });
       toast.success(client ? 'Client mis à jour!' : 'Client ajouté!');
       resetFormData();
@@ -143,17 +139,17 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
               />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-            <textarea
-              value={formData.address}
-              onChange={e => setFormData({ ...formData, address: e.target.value })}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
+          <AddressFields
+            street={formData.address}
+            postalCode={formData.postalCode}
+            city={formData.city}
+            onStreet={v => setFormData({ ...formData, address: v })}
+            onPostalCode={v => setFormData({ ...formData, postalCode: v })}
+            onCity={v => setFormData({ ...formData, city: v })}
+            streetLabel="Rue"
+            required
+            disabled={isSubmitting}
+          />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Forme juridique</label>
