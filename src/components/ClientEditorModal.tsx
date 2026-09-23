@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Id } from '../../convex/_generated/dataModel';
 import { AddressFields } from './AddressFields';
 import { formatStructuredAddress, parseStructuredAddress } from '../utils/address';
+import { filterSiren, filterTvaNumber, sirenRegex, tvaNumberRegex } from '../utils/validators';
 
 interface ClientEditorModalProps {
   isOpen: boolean;
@@ -62,6 +63,14 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.siren && !sirenRegex.test(formData.siren)) {
+      toast.error('SIREN invalide — 9 chiffres attendus');
+      return;
+    }
+    if (formData.tvaNumber && !tvaNumberRegex.test(formData.tvaNumber)) {
+      toast.error('N° TVA intracommunautaire invalide — format FR + 11 caractères');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const { postalCode, city, ...rest } = formData;
@@ -172,23 +181,33 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
               <input
                 type="text"
                 value={formData.siren}
-                onChange={e => setFormData({ ...formData, siren: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                onChange={e => setFormData({ ...formData, siren: filterSiren(e.target.value) })}
                 placeholder="9 chiffres"
                 inputMode="numeric"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  formData.siren && !sirenRegex.test(formData.siren) ? 'border-red-500' : 'border-gray-300'
+                }`}
                 disabled={isSubmitting}
               />
+              {formData.siren && !sirenRegex.test(formData.siren) && (
+                <p className="text-red-600 text-xs mt-1">9 chiffres attendus</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">N° TVA intracommunautaire</label>
               <input
                 type="text"
                 value={formData.tvaNumber}
-                onChange={e => setFormData({ ...formData, tvaNumber: e.target.value })}
+                onChange={e => setFormData({ ...formData, tvaNumber: filterTvaNumber(e.target.value) })}
                 placeholder="FR00123456789"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  formData.tvaNumber && !tvaNumberRegex.test(formData.tvaNumber) ? 'border-red-500' : 'border-gray-300'
+                }`}
                 disabled={isSubmitting}
               />
+              {formData.tvaNumber && !tvaNumberRegex.test(formData.tvaNumber) && (
+                <p className="text-red-600 text-xs mt-1">Format FR + 11 caractères</p>
+              )}
             </div>
           </div>
           <div className="flex justify-end space-x-3 pt-4 border-t">
