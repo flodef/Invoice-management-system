@@ -142,7 +142,8 @@ function createInvoicePDF(invoice: any): Uint8Array {
     doc.text(`Immatriculation : ${profile.immatriculation}`, PAGE_LEFT, y + 1);
     y += 5.5;
   }
-  const contact = [profile.email, profile.tel].filter(Boolean).join(' — ');
+  // Email vendeur : celui choisi sur la fiche client, sinon le profil.
+  const contact = [client?.vendorEmail ?? profile.email, profile.tel].filter(Boolean).join(' — ');
   if (contact) {
     doc.text(contact, PAGE_LEFT, y + 1);
     y += 5.5;

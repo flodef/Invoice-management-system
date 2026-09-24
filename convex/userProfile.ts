@@ -30,6 +30,7 @@ export const updateUserProfile = mutation({
     apeCode: v.optional(v.string()),
     immatriculation: v.optional(v.string()),
     bankAddress: v.optional(v.string()),
+    vendorEmails: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

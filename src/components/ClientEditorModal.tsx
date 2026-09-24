@@ -1,6 +1,6 @@
 import { IconX } from '@tabler/icons-react';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
 import { Id } from '../../convex/_generated/dataModel';
@@ -21,11 +21,13 @@ interface ClientEditorModalProps {
     siren?: string;
     tvaNumber?: string;
     isActive?: boolean;
+    vendorEmail?: string;
   } | null;
 }
 
 export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModalProps) {
   const saveClient = useMutation(api.clients.saveClient);
+  const userProfile = useQuery(api.userProfile.getUserProfile);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -38,6 +40,7 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
     siren: '',
     tvaNumber: '',
     isActive: true,
+    vendorEmail: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,6 +57,7 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
       siren: client?.siren || '',
       tvaNumber: client?.tvaNumber || '',
       isActive: client?.isActive ?? true,
+      vendorEmail: client?.vendorEmail ?? '',
     });
   }, [client]);
 
@@ -73,11 +77,13 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
     }
     setIsSubmitting(true);
     try {
-      const { postalCode, city, ...rest } = formData;
+      const { postalCode, city, vendorEmail, ...rest } = formData;
       await saveClient({
         id: client?._id || undefined,
         ...rest,
         address: formatStructuredAddress({ street: formData.address, postalCode, city }),
+        // « Défaut » = pas de valeur stockée → l'email du profil s'applique.
+        vendorEmail: vendorEmail || undefined,
       });
       toast.success(client ? 'Client mis à jour!' : 'Client ajouté!');
       resetFormData();
@@ -146,6 +152,24 @@ export function ClientEditorModal({ isOpen, onClose, client }: ClientEditorModal
                 required
                 disabled={isSubmitting}
               />
+            </div>
+            {/* Email vendeur : adresse expéditrice affichée sur la facture
+                + bcc des envois — liste gérée dans le profil. */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email vendeur</label>
+              <select
+                value={formData.vendorEmail}
+                onChange={e => setFormData({ ...formData, vendorEmail: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10"
+                disabled={isSubmitting}
+              >
+                <option value="">Défaut{userProfile?.email ? ` — ${userProfile.email}` : ''}</option>
+                {[...new Set([userProfile?.email, ...(userProfile?.vendorEmails ?? [])].filter(Boolean))].map(email => (
+                  <option key={email as string} value={email as string}>
+                    {email as string}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <AddressFields

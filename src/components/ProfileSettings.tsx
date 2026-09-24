@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
+import { IconPlus, IconX } from '@tabler/icons-react';
 import { AddressFields } from './AddressFields';
 import { formatStructuredAddress, parseStructuredAddress } from '../utils/address';
 
@@ -24,6 +25,10 @@ export function ProfileSettings() {
     immatriculation: '',
     bankAddress: '',
   });
+  // Emails vendeur alternatifs — le choix se fait par client (édition de
+  // la fiche) ; l'email professionnel ci-dessus reste le défaut.
+  const [vendorEmails, setVendorEmails] = useState<string[]>([]);
+  const [newVendorEmail, setNewVendorEmail] = useState('');
 
   useEffect(() => {
     if (userProfile) {
@@ -43,6 +48,7 @@ export function ProfileSettings() {
         immatriculation: userProfile.immatriculation || '',
         bankAddress: userProfile.bankAddress || '',
       });
+      setVendorEmails(userProfile.vendorEmails ?? []);
     }
   }, [userProfile]);
 
@@ -60,6 +66,7 @@ export function ProfileSettings() {
       await updateProfile({
         ...rest,
         address: formatStructuredAddress({ street: formData.address, postalCode, city }),
+        vendorEmails,
       });
       toast.success('Profil mis à jour avec succès!');
     } catch {
@@ -103,6 +110,61 @@ export function ProfileSettings() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
+          </div>
+        </div>
+
+        {/* Emails vendeur — adresses expéditrices alternatives, choisies
+            par client (fiche client). L'email professionnel reste le
+            défaut quand rien n'est choisi. */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Emails vendeur{' '}
+            <span className="font-normal text-gray-500">(visibles sur la facture, choix par client)</span>
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {vendorEmails.map(email => (
+              <span
+                key={email}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full text-sm"
+              >
+                {email}
+                <button
+                  type="button"
+                  onClick={() => setVendorEmails(vendorEmails.filter(e => e !== email))}
+                  className="text-gray-500 hover:text-red-600"
+                  aria-label={`Retirer ${email}`}
+                >
+                  <IconX size={14} />
+                </button>
+              </span>
+            ))}
+            <input
+              type="email"
+              value={newVendorEmail}
+              onChange={e => setNewVendorEmail(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const email = newVendorEmail.trim();
+                  if (email && !vendorEmails.includes(email)) setVendorEmails([...vendorEmails, email]);
+                  setNewVendorEmail('');
+                }
+              }}
+              placeholder="ajouter un email…"
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const email = newVendorEmail.trim();
+                if (email && !vendorEmails.includes(email)) setVendorEmails([...vendorEmails, email]);
+                setNewVendorEmail('');
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <IconPlus size={14} />
+              Ajouter
+            </button>
           </div>
         </div>
 

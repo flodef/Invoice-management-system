@@ -87,7 +87,9 @@ ${invoice.userProfile.name.split(' ')[0]}
       // Test sends (JC admin) go to the given address only — never the client,
       // and the owner bcc is skipped since the admin IS the owner.
       to: testRecipient ?? invoice.client.email,
-      ...(testRecipient ? {} : { bcc: invoice.userProfile.email }),
+      // Bcc = l'email vendeur du client (ex. une activité par adresse) —
+      // défaut : l'email du profil.
+      ...(testRecipient ? {} : { bcc: invoice.client.vendorEmail ?? invoice.userProfile.email }),
       subject: emailSubject,
       text: emailBody,
       attachments: [

@@ -17,6 +17,9 @@ const applicationTables = {
     apeCode: v.optional(v.string()), // Code APE/NAF — 4 chiffres + 1 lettre
     immatriculation: v.optional(v.string()), // RCS/RM si activité commerciale/artisanale
     bankAddress: v.optional(v.string()),
+    // Adresses expéditrices alternatives — le client choisit laquelle
+    // apparaît sur ses factures (l'email du profil reste le défaut).
+    vendorEmails: v.optional(v.array(v.string())),
   }).index('by_user', ['userId']),
 
   clients: defineTable({
@@ -29,6 +32,9 @@ const applicationTables = {
     siren: v.optional(v.string()), // 9 chiffres — obligatoire pour un client pro
     tvaNumber: v.optional(v.string()), // N° TVA intracommunautaire
     isActive: v.optional(v.boolean()),
+    // Email vendeur affiché sur la facture + bcc des envois — vide =
+    // l'email du profil (le défaut).
+    vendorEmail: v.optional(v.string()),
   }).index('by_user', ['userId']),
 
   services: defineTable({

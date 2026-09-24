@@ -28,6 +28,7 @@ export const saveClient = mutation({
     siren: v.optional(v.string()),
     tvaNumber: v.optional(v.string()),
     isActive: v.boolean(),
+    vendorEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
