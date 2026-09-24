@@ -343,6 +343,26 @@ export const toggleInvoiceStatus = mutation({
   },
 });
 
+/**
+ * Internal — called by statusSync after every JC sync attempt for a 'paid'
+ * toggle failed: flips the invoice back to 'sent' (clearing paymentDate) so
+ * it visibly stays unpaid and re-marking it paid re-triggers the sync.
+ * Guarded on current status = 'paid' — a newer manual change is never
+ * clobbered.
+ */
+export const revertPaidToSent = internalMutation({
+  args: { invoiceNumber: v.string() },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db
+      .query('invoices')
+      .withIndex('by_invoice_number', q => q.eq('invoiceNumber', args.invoiceNumber))
+      .first();
+    if (invoice?.status === 'paid') {
+      await ctx.db.patch(invoice._id, { status: 'sent', paymentDate: undefined });
+    }
+  },
+});
+
 // Delete invoice
 export const deleteInvoice = mutation({
   args: { id: v.id('invoices') },
