@@ -184,6 +184,27 @@ export const createExternal = internalMutation({
   },
 });
 
+/**
+ * Server-to-server cleanup — deletes an invoice created through the external
+ * import path (source 'job-conciergerie' / '-test'). Manually created
+ * invoices are refused: this endpoint exists to roll back JC imports (E2E
+ * tests, billing mistakes), not as a generic delete.
+ */
+export const deleteExternal = internalMutation({
+  args: { invoiceNumber: v.string() },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db
+      .query('invoices')
+      .withIndex('by_invoice_number', q => q.eq('invoiceNumber', args.invoiceNumber))
+      .first();
+    if (!invoice) return { deleted: false, reason: 'not-found' };
+    if (!invoice.source?.startsWith('job-conciergerie')) return { deleted: false, reason: 'not-external' };
+    if (invoice.pdfStorageId) await ctx.storage.delete(invoice.pdfStorageId);
+    await ctx.db.delete(invoice._id);
+    return { deleted: true };
+  },
+});
+
 // Shared bearer auth — the secret is a deployment env var
 // (IMS_IMPORT_SECRET), never in the codebase. trim() : un whitespace
 // glissé dans la var (copier-coller, export multiligne) invaliderait
@@ -292,6 +313,30 @@ export const sendInvoiceEmailHttp = httpAction(async (ctx, request) => {
   }
 
   return jsonResponse({ ok: true });
+});
+
+/**
+ * POST /delete-external-invoice — bearer-authenticated cleanup of a
+ * JC-imported invoice (E2E tests, billing mistakes). Refuses invoices not
+ * created through the import path. No status sync back — JC cleans its own
+ * rows on its side.
+ */
+export const deleteExternalInvoice = httpAction(async (ctx, request) => {
+  const authError = checkAuth(request);
+  if (authError) return authError;
+
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const invoiceNumber = (body as { invoiceNumber?: string }).invoiceNumber;
+  if (!invoiceNumber) {
+    return new Response(JSON.stringify({ error: 'invoiceNumber is required' }), { status: 400 });
+  }
+
+  const result = await ctx.runMutation(internal.importInvoice.deleteExternal, { invoiceNumber });
+  if (!result.deleted) {
+    return jsonResponse({ ok: false, ...result }, result.reason === 'not-found' ? 404 : 403);
+  }
+  return jsonResponse({ ok: true, ...result });
 });
 
 /**

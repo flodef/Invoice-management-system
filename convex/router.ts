@@ -1,5 +1,11 @@
 import { httpRouter } from 'convex/server';
-import { importInvoice, sendInvoiceEmailHttp, testInvoiceEmail, testInvoicePdf } from './importInvoice';
+import {
+  deleteExternalInvoice,
+  importInvoice,
+  sendInvoiceEmailHttp,
+  testInvoiceEmail,
+  testInvoicePdf,
+} from './importInvoice';
 
 const http = httpRouter();
 
@@ -15,6 +21,14 @@ http.route({
   path: '/send-invoice-email',
   method: 'POST',
   handler: sendInvoiceEmailHttp,
+});
+
+// JC-imported invoice cleanup (E2E tests, billing mistakes) — import-path
+// sources only, never user-created invoices.
+http.route({
+  path: '/delete-external-invoice',
+  method: 'POST',
+  handler: deleteExternalInvoice,
 });
 
 // JC admin test endpoints — TEST- draft invoice per client, never client-facing.
