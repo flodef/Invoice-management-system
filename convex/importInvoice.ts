@@ -185,9 +185,11 @@ export const createExternal = internalMutation({
 });
 
 // Shared bearer auth — the secret is a deployment env var
-// (IMS_IMPORT_SECRET), never in the codebase.
+// (IMS_IMPORT_SECRET), never in the codebase. trim() : un whitespace
+// glissé dans la var (copier-coller, export multiligne) invaliderait
+// silencieusement tous les appels JC → IMS.
 const checkAuth = (request: Request): Response | null => {
-  const secret = process.env.IMS_IMPORT_SECRET;
+  const secret = process.env.IMS_IMPORT_SECRET?.trim();
   if (!secret) return new Response(JSON.stringify({ error: 'Server misconfigured' }), { status: 500 });
   if (request.headers.get('authorization') !== `Bearer ${secret}`)
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
