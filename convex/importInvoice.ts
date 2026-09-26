@@ -205,6 +205,77 @@ export const deleteExternal = internalMutation({
   },
 });
 
+/**
+ * Avoir (credit note) pour une facture importée JC — garantie « 30 jours
+ * satisfait ou remboursé » : JC appelle /import-credit-note quand l'admin
+ * rembourse un client. Produit un document AV-YYYYMMNN (numérotation propre,
+ * montants en négatif) référençant la facture d'origine, qui est marquée
+ * `refundedBy`. Idempotent : un second appel sur la même facture renvoie
+ * l'avoir existant.
+ */
+export const createCreditNote = internalMutation({
+  args: { invoiceNumber: v.string() },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db
+      .query('invoices')
+      .withIndex('by_invoice_number', q => q.eq('invoiceNumber', args.invoiceNumber))
+      .first();
+    if (!invoice) return { ok: false, reason: 'not-found' };
+    if (!invoice.source?.startsWith('job-conciergerie')) return { ok: false, reason: 'not-external' };
+    if (invoice.kind === 'credit_note') return { ok: false, reason: 'is-credit-note' };
+    // Un brouillon n'a pas besoin d'être annulé — on le supprime.
+    if (invoice.status !== 'sent' && invoice.status !== 'paid') return { ok: false, reason: 'not-issued' };
+    if (invoice.refundedBy) return { ok: true, invoiceNumber: invoice.refundedBy, created: false };
+
+    const all = await ctx.db
+      .query('invoices')
+      .withIndex('by_user', q => q.eq('userId', invoice.userId))
+      .collect();
+    // Ceinture + bretelles : refundedBy couvre le cas nominal, creditFor le
+    // cas où le patch aurait sauté entre deux appels.
+    const existing = all.find(inv => inv.creditFor === args.invoiceNumber);
+    if (existing) {
+      await ctx.db.patch(invoice._id, { refundedBy: existing.invoiceNumber });
+      return { ok: true, invoiceNumber: existing.invoiceNumber, created: false };
+    }
+
+    const d = new Date();
+    const prefix = `AV-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const maxNumber = all
+      .filter(inv => inv.invoiceNumber.startsWith(prefix))
+      .reduce((max, inv) => Math.max(max, parseInt(inv.invoiceNumber.slice(-2)) || 0), 0);
+    const creditNumber = `${prefix}${String(maxNumber + 1).padStart(2, '0')}`;
+
+    // Mêmes lignes en négatif — la remise éventuelle reste exprimée en % sur
+    // un prix négatif, le total négatif tombe juste.
+    const items = invoice.items.map(item => ({
+      ...item,
+      label: `Avoir — ${item.label}`,
+      price: -item.price,
+      total: -item.total,
+    }));
+
+    const invoiceId = await ctx.db.insert('invoices', {
+      userId: invoice.userId,
+      clientId: invoice.clientId,
+      invoiceNumber: creditNumber,
+      invoiceDate: Date.now(),
+      serviceEndDate: invoice.serviceEndDate,
+      // 'paid' et non 'sent' : un avoir n'est jamais « en attente de
+      // règlement » (il sortirait des compteurs de retard), et son montant
+      // négatif s'impute correctement sur le CA payé.
+      status: 'paid',
+      kind: 'credit_note',
+      creditFor: invoice.invoiceNumber,
+      source: invoice.source,
+      totalAmount: -invoice.totalAmount,
+      items,
+    });
+    await ctx.db.patch(invoice._id, { refundedBy: creditNumber });
+    return { ok: true, invoiceId, invoiceNumber: creditNumber, created: true };
+  },
+});
+
 // Shared bearer auth — the secret is a deployment env var
 // (IMS_IMPORT_SECRET), never in the codebase. trim() : un whitespace
 // glissé dans la var (copier-coller, export multiligne) invaliderait
@@ -337,6 +408,29 @@ export const deleteExternalInvoice = httpAction(async (ctx, request) => {
     return jsonResponse({ ok: false, ...result }, result.reason === 'not-found' ? 404 : 403);
   }
   return jsonResponse({ ok: true, ...result });
+});
+
+/**
+ * POST /import-credit-note — bearer-authenticated. Creates the avoir for a
+ * JC-imported invoice (refund path — JC's admin action checks the 30-day
+ * window on its side; this endpoint only refuses drafts/manual invoices).
+ */
+export const importCreditNote = httpAction(async (ctx, request) => {
+  const authError = checkAuth(request);
+  if (authError) return authError;
+
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const invoiceNumber = (body as { invoiceNumber?: string }).invoiceNumber;
+  if (!invoiceNumber) {
+    return jsonResponse({ error: 'invoiceNumber is required' }, 400);
+  }
+
+  const result = await ctx.runMutation(internal.importInvoice.createCreditNote, { invoiceNumber });
+  if (!result.ok) {
+    return jsonResponse(result, result.reason === 'not-found' ? 404 : 422);
+  }
+  return jsonResponse(result);
 });
 
 /**

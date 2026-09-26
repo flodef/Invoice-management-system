@@ -1,6 +1,7 @@
 import { httpRouter } from 'convex/server';
 import {
   deleteExternalInvoice,
+  importCreditNote,
   importInvoice,
   sendInvoiceEmailHttp,
   testInvoiceEmail,
@@ -29,6 +30,13 @@ http.route({
   path: '/delete-external-invoice',
   method: 'POST',
   handler: deleteExternalInvoice,
+});
+
+// Avoir for a JC-imported invoice (30-day refund guarantee).
+http.route({
+  path: '/import-credit-note',
+  method: 'POST',
+  handler: importCreditNote,
 });
 
 // JC admin test endpoints — TEST- draft invoice per client, never client-facing.

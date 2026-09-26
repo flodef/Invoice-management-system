@@ -71,6 +71,12 @@ const applicationTables = {
     // Origin of the row — 'job-conciergerie' marks invoices imported by the
     // billing cron; status changes on those are pushed back to JC.
     source: v.optional(v.string()),
+    // Avoirs (credit notes) — 'credit_note' on the avoir row itself,
+    // creditFor = le n° de la facture annulée, refundedBy = le n° de l'avoir
+    // posé sur la facture d'origine.
+    kind: v.optional(v.string()),
+    creditFor: v.optional(v.string()),
+    refundedBy: v.optional(v.string()),
   })
     .index('by_user', ['userId'])
     .index('by_user_and_date', ['userId', 'invoiceDate'])

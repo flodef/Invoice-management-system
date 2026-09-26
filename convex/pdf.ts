@@ -174,10 +174,15 @@ function createInvoicePDF(invoice: any): Uint8Array {
 
   // ─── En-tête de facture ───
   let body = Math.max(emitterEnd, clientEnd) + 12;
+  const isCreditNote = invoice.kind === 'credit_note';
   doc.setFontSize(17).setFont('helvetica', 'bold');
-  doc.text(`Facture N° ${invoice.invoiceNumber}`, PAGE_LEFT, body);
+  doc.text(`${isCreditNote ? 'Avoir' : 'Facture'} N° ${invoice.invoiceNumber}`, PAGE_LEFT, body);
   doc.setFontSize(9).setFont('helvetica', 'normal');
   body += 6;
+  if (isCreditNote && invoice.creditFor) {
+    doc.text(`En annulation de la facture N° ${invoice.creditFor}`, PAGE_LEFT, body);
+    body += 5;
+  }
   doc.text(`Date d'émission : ${formatDate(invoice.invoiceDate)}`, PAGE_LEFT, body);
   body += 5;
   if (invoice.serviceEndDate) {
@@ -246,7 +251,11 @@ function createInvoicePDF(invoice: any): Uint8Array {
   currentY += 8;
   doc.setDrawColor(0, 0, 0).rect(CLIENT_X, currentY, 70, 9);
   doc.setFontSize(11).setFont('helvetica', 'bold');
-  doc.text(`Total à payer : ${formatCurrency(invoice.totalAmount)}`, CLIENT_X + 3, currentY + 6);
+  doc.text(
+    `${invoice.kind === 'credit_note' ? 'Total remboursé' : 'Total à payer'} : ${formatCurrency(invoice.totalAmount)}`,
+    CLIENT_X + 3,
+    currentY + 6,
+  );
   doc.setFontSize(8).setFont('helvetica', 'normal');
   doc.text(
     'TVA non applicable, art. 293 B du CGI — montant en franchise de TVA (HT = TTC).',
