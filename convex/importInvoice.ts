@@ -351,7 +351,26 @@ export const importInvoice = httpAction(async (ctx, request) => {
     invoiceDate: args.invoiceDate,
     serviceEndDate: args.serviceEndDate,
   });
-  return jsonResponse({ ok: true, ...result });
+
+  // The PDF is generated at import so JC can attach it to its own
+  // client-facing email — IMS sends no email for imported invoices. On
+  // idempotent re-imports the stored blob is reused (no orphan storage).
+  let storageId;
+  if (result.created) {
+    ({ storageId } = await ctx.runAction(internal.pdf.generateInvoicePDFInternal, {
+      invoiceId: result.invoiceId,
+    }));
+  } else {
+    const invoice = await ctx.runQuery(internal.invoices.getByInvoiceNumber, {
+      invoiceNumber: result.invoiceNumber,
+    });
+    storageId =
+      invoice?.pdfStorageId ??
+      (await ctx.runAction(internal.pdf.generateInvoicePDFInternal, { invoiceId: result.invoiceId })).storageId;
+  }
+  const pdfUrl = storageId ? await ctx.runAction(api.pdf.getStorageUrl, { storageId }) : null;
+
+  return jsonResponse({ ok: true, ...result, pdfUrl });
 });
 
 /**

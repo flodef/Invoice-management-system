@@ -14,6 +14,7 @@ import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as importInvoice from "../importInvoice.js";
 import type * as invoices from "../invoices.js";
+import type * as migrations_cleanupTestClients from "../migrations/cleanupTestClients.js";
 import type * as migrations_vendorEmails from "../migrations/vendorEmails.js";
 import type * as pdf from "../pdf.js";
 import type * as router from "../router.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   importInvoice: typeof importInvoice;
   invoices: typeof invoices;
+  "migrations/cleanupTestClients": typeof migrations_cleanupTestClients;
   "migrations/vendorEmails": typeof migrations_vendorEmails;
   pdf: typeof pdf;
   router: typeof router;
