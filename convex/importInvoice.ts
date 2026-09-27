@@ -45,6 +45,7 @@ export const createExternal = internalMutation({
     discount: v.optional(v.number()),
     invoiceDate: v.optional(v.string()), // ISO date
     serviceEndDate: v.optional(v.string()), // ISO date — fin de prestation
+    paid: v.optional(v.boolean()), // déjà encaissée ailleurs (Stripe) → importée payée
     test: v.optional(v.boolean()), // admin testing — TEST- draft, see below
   },
   handler: async (ctx, args) => {
@@ -173,8 +174,10 @@ export const createExternal = internalMutation({
       invoiceNumber,
       invoiceDate,
       serviceEndDate,
-      paymentDate: calculatePaymentDate(invoiceDate),
-      status: 'sent',
+      // Déjà encaissée (facture Stripe du rail carte) → 'paid' à la date de
+      // facture : elle ne doit pas sortir en créance ni fausser les retards.
+      paymentDate: args.paid ? invoiceDate : calculatePaymentDate(invoiceDate),
+      status: args.paid ? 'paid' : 'sent',
       source: 'job-conciergerie',
       totalAmount: total,
       items,
