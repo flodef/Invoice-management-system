@@ -1,6 +1,7 @@
 import { httpRouter } from 'convex/server';
 import {
   deleteExternalInvoice,
+  externalInvoiceStatus,
   importCreditNote,
   importInvoice,
   sendInvoiceEmailHttp,
@@ -37,6 +38,14 @@ http.route({
   path: '/import-credit-note',
   method: 'POST',
   handler: importCreditNote,
+});
+
+// Batch status read for imported invoices — Tradiz polls this (per-shop DBs
+// make the JC-style push unrouteable).
+http.route({
+  path: '/external-invoice-status',
+  method: 'POST',
+  handler: externalInvoiceStatus,
 });
 
 // JC admin test endpoints — TEST- draft invoice per client, never client-facing.

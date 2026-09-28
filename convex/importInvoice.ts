@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { httpAction, internalMutation } from './_generated/server';
+import { httpAction, internalMutation, internalQuery } from './_generated/server';
 import { api, internal } from './_generated/api';
 import { calculatePaymentDate } from './utils';
 import type { Id } from './_generated/dataModel';
@@ -47,6 +47,10 @@ export const createExternal = internalMutation({
     serviceEndDate: v.optional(v.string()), // ISO date — fin de prestation
     paid: v.optional(v.boolean()), // déjà encaissée ailleurs (Stripe) → importée payée
     test: v.optional(v.boolean()), // admin testing — TEST- draft, see below
+    // Origine de l'import — 'tradiz' pour les factures d'abonnement Tradiz.
+    // Whitelistée côté HTTP (défaut 'job-conciergerie') : le label pilote le
+    // périmètre des endpoints externes (avoir, suppression, sync de statut).
+    source: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const profile = await ctx.db.query('userProfiles').first();
@@ -178,7 +182,7 @@ export const createExternal = internalMutation({
       // facture : elle ne doit pas sortir en créance ni fausser les retards.
       paymentDate: args.paid ? invoiceDate : calculatePaymentDate(invoiceDate),
       status: args.paid ? 'paid' : 'sent',
-      source: 'job-conciergerie',
+      source: args.source ?? 'job-conciergerie',
       totalAmount: total,
       items,
     });
@@ -201,7 +205,7 @@ export const deleteExternal = internalMutation({
       .withIndex('by_invoice_number', q => q.eq('invoiceNumber', args.invoiceNumber))
       .first();
     if (!invoice) return { deleted: false, reason: 'not-found' };
-    if (!invoice.source?.startsWith('job-conciergerie')) return { deleted: false, reason: 'not-external' };
+    if (!isExternalSource(invoice.source)) return { deleted: false, reason: 'not-external' };
     if (invoice.pdfStorageId) await ctx.storage.delete(invoice.pdfStorageId);
     await ctx.db.delete(invoice._id);
     return { deleted: true };
@@ -224,7 +228,7 @@ export const createCreditNote = internalMutation({
       .withIndex('by_invoice_number', q => q.eq('invoiceNumber', args.invoiceNumber))
       .first();
     if (!invoice) return { ok: false, reason: 'not-found' };
-    if (!invoice.source?.startsWith('job-conciergerie')) return { ok: false, reason: 'not-external' };
+    if (!isExternalSource(invoice.source)) return { ok: false, reason: 'not-external' };
     if (invoice.kind === 'credit_note') return { ok: false, reason: 'is-credit-note' };
     // Un brouillon n'a pas besoin d'être annulé — on le supprime.
     if (invoice.status !== 'sent' && invoice.status !== 'paid') return { ok: false, reason: 'not-issued' };
@@ -279,6 +283,12 @@ export const createCreditNote = internalMutation({
   },
 });
 
+// Rows created through the bearer-authenticated import path — only these may
+// be read/mutated by the external endpoints (avoir, suppression, statut).
+// 'job-conciergerie*' covers JC (et '-test'), 'tradiz' les imports Tradiz.
+const isExternalSource = (source?: string): boolean =>
+  !!source && (source.startsWith('job-conciergerie') || source === 'tradiz');
+
 // Shared bearer auth — the secret is a deployment env var
 // (IMS_IMPORT_SECRET), never in the codebase. trim() : un whitespace
 // glissé dans la var (copier-coller, export multiligne) invaliderait
@@ -304,7 +314,12 @@ interface InvoiceArgs {
   discount?: number;
   invoiceDate?: string;
   serviceEndDate?: string;
+  paid?: boolean;
+  source?: string;
 }
+
+// Callers whitelistés — toute autre valeur retombe sur 'job-conciergerie'.
+const EXTERNAL_SOURCES = ['job-conciergerie', 'tradiz'];
 
 const parseJsonBody = async (request: Request): Promise<unknown> => {
   try {
@@ -353,6 +368,8 @@ export const importInvoice = httpAction(async (ctx, request) => {
     discount: args.discount,
     invoiceDate: args.invoiceDate,
     serviceEndDate: args.serviceEndDate,
+    paid: args.paid === true,
+    source: args.source && EXTERNAL_SOURCES.includes(args.source) ? args.source : undefined,
   });
 
   // The PDF is generated at import so JC can attach it to its own
@@ -453,6 +470,53 @@ export const importCreditNote = httpAction(async (ctx, request) => {
     return jsonResponse(result, result.reason === 'not-found' ? 404 : 422);
   }
   return jsonResponse(result);
+});
+
+// Batch lookup for /external-invoice-status — one query over the number
+// index per call, not one query per invoice.
+export const listByInvoiceNumbers = internalQuery({
+  args: { invoiceNumbers: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const found = await Promise.all(
+      args.invoiceNumbers.map(invoiceNumber =>
+        ctx.db
+          .query('invoices')
+          .withIndex('by_invoice_number', q => q.eq('invoiceNumber', invoiceNumber))
+          .first(),
+      ),
+    );
+    return found.filter((inv): inv is NonNullable<typeof inv> => inv !== null);
+  },
+});
+
+/**
+ * POST /external-invoice-status — bearer-authenticated batch status read.
+ * Body: { invoiceNumbers: string[] } → { statuses: { [number]: status } }.
+ *
+ * Tradiz polls this from its lazy billing pass (per-shop DBs make the
+ * JC-style push unrouteable — IMS doesn't know which shop owns a number).
+ * Only external-import rows answer: manual invoices are not readable here.
+ * Unknown numbers are simply absent from the map.
+ */
+export const externalInvoiceStatus = httpAction(async (ctx, request) => {
+  const authError = checkAuth(request);
+  if (authError) return authError;
+
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const numbers = (body as { invoiceNumbers?: unknown }).invoiceNumbers;
+  if (!Array.isArray(numbers) || numbers.length > 200 || numbers.some(n => typeof n !== 'string')) {
+    return jsonResponse({ error: 'invoiceNumbers (string[], ≤200) is required' }, 400);
+  }
+
+  const invoices = await ctx.runQuery(internal.importInvoice.listByInvoiceNumbers, {
+    invoiceNumbers: numbers as string[],
+  });
+  const statuses: Record<string, string> = {};
+  for (const inv of invoices) {
+    if (isExternalSource(inv.source)) statuses[inv.invoiceNumber] = inv.status;
+  }
+  return jsonResponse({ ok: true, statuses });
 });
 
 /**
