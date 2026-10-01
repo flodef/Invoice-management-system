@@ -1,77 +1,79 @@
 // Service Worker for Invoice Management System
-const CACHE_NAME = 'invoice-manager-v1';
+const CACHE_NAME = 'invoice-manager-v2';
 
-// List of assets to cache
+// Precached shell assets (public dir). Vite build assets are content-hashed
+// and get cached on first fetch instead.
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/favicon.ico',
+  '/manifest.json',
   '/icons/icon.svg',
-  '/icons/icon-192x192.png', 
+  '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  '/icons/apple-touch-icon.png'
+  '/icons/apple-touch-icon.png',
 ];
 
-// Install event - cache assets
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-      .then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then(cache => cache.addAll(ASSETS_TO_CACHE))
+      .then(() => self.skipWaiting()),
   );
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((cacheName) => cacheName !== CACHE_NAME)
-          .map((cacheName) => caches.delete(cacheName))
-      );
-    }).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then(cacheNames =>
+        Promise.all(
+          cacheNames.filter(cacheName => cacheName !== CACHE_NAME).map(cacheName => caches.delete(cacheName)),
+        ),
+      )
+      .then(() => self.clients.claim()),
   );
 });
 
-// Fetch event - serve from cache, falling back to network
-self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) {
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // Only handle same-origin requests; Convex/API calls always go to network
+  if (url.origin !== self.location.origin) return;
+
+  // Navigations: network-first so deploys ship immediately, cache fallback
+  // keeps the app shell reachable offline
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('/index.html', copy));
+          return response;
+        })
+        .catch(() => caches.match('/index.html')),
+    );
     return;
   }
 
-  // For API requests, always go to network
-  if (event.request.url.includes('/api/')) {
-    return;
-  }
-
+  // Static assets: cache-first (Vite emits content-hashed filenames)
   event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        return fetch(event.request)
-          .then((response) => {
-            // Don't cache if not a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Clone the response
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
+    caches.match(event.request).then(
+      cachedResponse =>
+        cachedResponse ||
+        fetch(event.request).then(response => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
+          }
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
           });
-      })
+          return response;
+        }),
+    ),
   );
 });
