@@ -71,7 +71,7 @@ const sendInvoiceEmailCore = async (
 
   const emailSubject = `Facture n°${invoice.invoiceNumber}`;
   const emailBody = `
-${randomGreeting} ${invoice.client.contactName},
+${randomGreeting} ${invoice.client.contactName || invoice.client.name},
 ${customMessage ? `\n${customMessage}\n` : ''}
 Voici la facture n°${invoice.invoiceNumber} du mois de ${invoiceDate.toLocaleString('fr-FR', { month: 'long' })} d'un montant de ${formatCurrency(invoice.totalAmount)}.
 

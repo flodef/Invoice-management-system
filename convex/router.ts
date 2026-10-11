@@ -4,6 +4,7 @@ import {
   externalInvoiceStatus,
   importCreditNote,
   importInvoice,
+  invoicePdfs,
   sendInvoiceEmailHttp,
   testInvoiceEmail,
   testInvoicePdf,
@@ -46,6 +47,14 @@ http.route({
   path: '/external-invoice-status',
   method: 'POST',
   handler: externalInvoiceStatus,
+});
+
+// PDF link resolver (by invoice numbers or client name) — Tradiz exposes
+// downloadable invoices in its admin Abonnement section.
+http.route({
+  path: '/invoice-pdfs',
+  method: 'POST',
+  handler: invoicePdfs,
 });
 
 // JC admin test endpoints — TEST- draft invoice per client, never client-facing.

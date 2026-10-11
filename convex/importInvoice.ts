@@ -35,6 +35,10 @@ export const createExternal = internalMutation({
   args: {
     clientName: v.string(),
     clientEmail: v.optional(v.string()),
+    // Personne de contact chez le client — sert à la salutation des emails
+    // de facture ("Bonjour {contactName}"). Optionnel : laissé vide, le mail
+    // tombe sur la formule société.
+    clientContactName: v.optional(v.string()),
     clientAddress: v.optional(v.string()),
     clientLegalForm: v.optional(v.string()),
     clientSiren: v.optional(v.string()),
@@ -70,7 +74,7 @@ export const createExternal = internalMutation({
       clientId = await ctx.db.insert('clients', {
         userId,
         name: args.clientName,
-        contactName: '',
+        contactName: args.clientContactName ?? '',
         address: args.clientAddress ?? '',
         email: args.clientEmail ?? '',
         legalForm: args.clientLegalForm ?? '',
@@ -81,6 +85,7 @@ export const createExternal = internalMutation({
     } else {
       const existing = clients.find(c => c._id === clientId)!;
       const patch: Record<string, string> = {};
+      if (!existing.contactName && args.clientContactName) patch.contactName = args.clientContactName;
       if (!existing.address && args.clientAddress) patch.address = args.clientAddress;
       if (!existing.email && args.clientEmail) patch.email = args.clientEmail;
       if (!existing.legalForm && args.clientLegalForm) patch.legalForm = args.clientLegalForm;
@@ -304,6 +309,7 @@ const checkAuth = (request: Request): Response | null => {
 interface InvoiceArgs {
   clientName: string;
   clientEmail?: string;
+  clientContactName?: string;
   clientAddress?: string;
   clientLegalForm?: string;
   clientSiren?: string;
@@ -358,6 +364,7 @@ export const importInvoice = httpAction(async (ctx, request) => {
   const result = await ctx.runMutation(internal.importInvoice.createExternal, {
     clientName: args.clientName,
     clientEmail: args.clientEmail,
+    clientContactName: args.clientContactName,
     clientAddress: args.clientAddress,
     clientLegalForm: args.clientLegalForm,
     clientSiren: args.clientSiren,
@@ -519,6 +526,73 @@ export const externalInvoiceStatus = httpAction(async (ctx, request) => {
   return jsonResponse({ ok: true, statuses });
 });
 
+// Lookup for /invoice-pdfs — clientName resolves through the same
+// normalization as imports so manual AND imported invoices are found.
+export const listByClientName = internalQuery({
+  args: { clientName: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.query('userProfiles').first();
+    if (!profile) return [];
+    const clients = await ctx.db
+      .query('clients')
+      .withIndex('by_user', q => q.eq('userId', profile.userId))
+      .collect();
+    const wanted = normalizeClientName(args.clientName);
+    const client = clients.find(c => normalizeClientName(c.name) === wanted);
+    if (!client) return [];
+    const invoices = await ctx.db
+      .query('invoices')
+      .withIndex('by_user', q => q.eq('userId', profile.userId))
+      .collect();
+    return invoices.filter(inv => inv.clientId === client._id);
+  },
+});
+
+/**
+ * POST /invoice-pdfs — bearer-authenticated PDF link resolver. Body:
+ * { invoiceNumbers: string[] } or { clientName: string }. Returns each found
+ * invoice with a fresh storage URL, generating the PDF when none exists yet.
+ * Unlike /external-invoice-status this is not limited to import-path rows —
+ * the bearer secret already scopes it to the owner's own tooling.
+ */
+export const invoicePdfs = httpAction(async (ctx, request) => {
+  const authError = checkAuth(request);
+  if (authError) return authError;
+
+  const body = await parseJsonBody(request);
+  if (body instanceof Response) return body;
+  const numbers = (body as { invoiceNumbers?: unknown }).invoiceNumbers;
+  const clientName = (body as { clientName?: unknown }).clientName;
+  const hasNumbers = Array.isArray(numbers) && numbers.length > 0 && numbers.every(n => typeof n === 'string');
+  if (!hasNumbers && typeof clientName !== 'string') {
+    return jsonResponse({ error: 'invoiceNumbers (string[], ≤200) or clientName is required' }, 400);
+  }
+
+  const invoices = hasNumbers
+    ? numbers.length > 200
+      ? null
+      : await ctx.runQuery(internal.importInvoice.listByInvoiceNumbers, {
+          invoiceNumbers: numbers as string[],
+        })
+    : await ctx.runQuery(internal.importInvoice.listByClientName, { clientName: clientName as string });
+  if (!invoices) return jsonResponse({ error: 'invoiceNumbers (string[], ≤200) is required' }, 400);
+
+  const result = [];
+  for (const inv of invoices.slice(0, 200)) {
+    const storageId =
+      inv.pdfStorageId ??
+      (await ctx.runAction(internal.pdf.generateInvoicePDFInternal, { invoiceId: inv._id })).storageId;
+    result.push({
+      invoiceNumber: inv.invoiceNumber,
+      status: inv.status,
+      totalAmount: inv.totalAmount,
+      invoiceDate: inv.invoiceDate,
+      pdfUrl: await ctx.runAction(api.pdf.getStorageUrl, { storageId }),
+    });
+  }
+  return jsonResponse({ ok: true, invoices: result });
+});
+
 /**
  * POST /test-invoice-pdf — bearer-authenticated. Creates/refreshes the
  * client's TEST- draft invoice, generates its PDF and returns a storage URL —
@@ -536,6 +610,7 @@ export const testInvoicePdf = httpAction(async (ctx, request) => {
   const { invoiceId, invoiceNumber } = await ctx.runMutation(internal.importInvoice.createExternal, {
     clientName: args.clientName,
     clientEmail: args.clientEmail,
+    clientContactName: args.clientContactName,
     clientAddress: args.clientAddress,
     clientLegalForm: args.clientLegalForm,
     clientSiren: args.clientSiren,
@@ -576,6 +651,7 @@ export const testInvoiceEmail = httpAction(async (ctx, request) => {
   const { invoiceId, invoiceNumber } = await ctx.runMutation(internal.importInvoice.createExternal, {
     clientName: args.clientName,
     clientEmail: args.clientEmail,
+    clientContactName: args.clientContactName,
     clientAddress: args.clientAddress,
     clientLegalForm: args.clientLegalForm,
     clientSiren: args.clientSiren,
