@@ -9,9 +9,9 @@ import { InvoiceManager } from './components/InvoiceManager';
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm h-16 flex justify-between items-center border-b shadow-sm px-4">
-        <h2 className="text-xl font-semibold text-primary">Gestionnaire de Factures</h2>
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm h-16 flex justify-between items-center border-b shadow-sm px-3 sm:px-4">
+        <h2 className="text-lg sm:text-xl font-semibold text-primary truncate">Gestionnaire de Factures</h2>
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
           <Authenticated>
             <SignOutButton />
