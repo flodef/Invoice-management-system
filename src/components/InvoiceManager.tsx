@@ -7,6 +7,7 @@ import { ServiceManager } from './ServiceManager';
 import { InvoiceList } from './InvoiceList';
 import { InvoiceEditor } from './InvoiceEditor';
 import { StatisticsPage } from './StatisticsPage';
+import { InstallAppBanner } from './InstallAppBanner';
 
 import { Id } from '../../convex/_generated/dataModel';
 
@@ -53,6 +54,7 @@ export function InvoiceManager() {
 
   return (
     <div className="space-y-6">
+      <InstallAppBanner />
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="flex overflow-x-auto">

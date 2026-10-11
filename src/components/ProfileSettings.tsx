@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
-import { IconPlus, IconX } from '@tabler/icons-react';
+import { IconPlus, IconX, IconDeviceMobileDown } from '@tabler/icons-react';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { AddressFields } from './AddressFields';
 import { formatStructuredAddress, parseStructuredAddress } from '../utils/address';
 
@@ -29,6 +30,7 @@ export function ProfileSettings() {
   // la fiche) ; l'email professionnel ci-dessus reste le défaut.
   const [vendorEmails, setVendorEmails] = useState<string[]>([]);
   const [newVendorEmail, setNewVendorEmail] = useState('');
+  const { canInstall, promptInstall } = useInstallPrompt();
 
   useEffect(() => {
     if (userProfile) {
@@ -277,6 +279,27 @@ export function ProfileSettings() {
           </button>
         </div>
       </form>
+
+      {/* Installation PWA — visible seulement quand le navigateur la
+          propose (Chrome/Edge) ; iOS : Partager → « Sur l'écran
+          d'accueil ». */}
+      {canInstall && (
+        <div className="mt-8 border-t pt-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Application</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            Installez l'application sur cet appareil pour la lancer comme une app — plein écran, sans barre d'adresse,
+            disponible hors connexion.
+          </p>
+          <button
+            type="button"
+            onClick={() => void promptInstall()}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <IconDeviceMobileDown size={18} />
+            Installer l'application
+          </button>
+        </div>
+      )}
     </div>
   );
 }
