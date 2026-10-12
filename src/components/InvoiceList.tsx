@@ -185,8 +185,16 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       }
 
       if (pdfBlobUrl) {
-        setPdfUrl(pdfBlobUrl);
-        setShowPdfViewer(id);
+        // Mobile browsers don't render PDFs in iframes (Safari iOS shows a
+        // blank pane, Chrome Android downloads) — open the blob in a new
+        // tab there like job-conciergerie does; the iframe modal stays
+        // for desktop where it works.
+        if (/Android|iPhone|iPod/i.test(navigator.userAgent) || window.matchMedia('(max-width: 640px)').matches) {
+          window.open(pdfBlobUrl, '_blank');
+        } else {
+          setPdfUrl(pdfBlobUrl);
+          setShowPdfViewer(id);
+        }
       } else {
         toast.error('Une erreur inattendue est survenue lors du chargement du PDF.');
       }
