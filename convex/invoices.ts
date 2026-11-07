@@ -2,13 +2,36 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { v } from 'convex/values';
 import { api } from './_generated/api';
 import { Id } from './_generated/dataModel';
-import { internalMutation, internalQuery, mutation, query, type MutationCtx } from './_generated/server';
+import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server';
 import { internal } from './_generated/api';
+import { isExternalSource } from './sources';
 import { calculatePaymentDate } from './utils';
 
 function roundToTwoDecimals(num: number): number {
   return parseFloat(num.toFixed(2));
 }
+
+// Numérotation mensuelle : préfixe YYYYMM + séquence sur 2 chiffres
+// (max+1 parmi les factures du mois). `date` permet d'avancer le mois sans
+// dépendre de l'horloge (générateur récurrent, tests).
+export const nextInvoiceNumber = async (
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<'users'>,
+  date: Date,
+): Promise<string> => {
+  const prefix = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+  const invoices = await ctx.db
+    .query('invoices')
+    .withIndex('by_user', q => q.eq('userId', userId))
+    .collect();
+
+  const maxNumber = invoices
+    .filter(inv => inv.invoiceNumber.startsWith(prefix))
+    .reduce((max, inv) => Math.max(max, parseInt(inv.invoiceNumber.slice(-2)) || 0), 0);
+
+  return `${prefix}${String(maxNumber + 1).padStart(2, '0')}`;
+};
 
 // Generate invoice number
 export const generateInvoiceNumber = query({
@@ -17,25 +40,7 @@ export const generateInvoiceNumber = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error('Not authenticated');
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const prefix = `${year}${month}`;
-
-    // Find the highest invoice number for this month
-    const invoices = await ctx.db
-      .query('invoices')
-      .withIndex('by_user', q => q.eq('userId', userId))
-      .collect();
-
-    const monthInvoices = invoices.filter(inv => inv.invoiceNumber.startsWith(prefix));
-    const maxNumber = monthInvoices.reduce((max, inv) => {
-      const num = parseInt(inv.invoiceNumber.slice(-2));
-      return Math.max(max, num);
-    }, 0);
-
-    const nextNumber = String(maxNumber + 1).padStart(2, '0');
-    return `${prefix}${nextNumber}`;
+    return nextInvoiceNumber(ctx, userId, new Date());
   },
 });
 
@@ -187,6 +192,9 @@ export const updateInvoice = mutation({
     const invoice = await ctx.db.get(args.id);
     if (!invoice || invoice.userId !== userId) {
       throw new Error('Invoice not found');
+    }
+    if (isExternalSource(invoice.source)) {
+      throw new Error('Facture gérée par une autre application');
     }
 
     const itemsWithRoundedTotals = args.items.map(item => ({
@@ -374,6 +382,9 @@ export const deleteInvoice = mutation({
     if (!invoice || invoice.userId !== userId) {
       throw new Error('Invoice not found');
     }
+    if (isExternalSource(invoice.source)) {
+      throw new Error('Facture gérée par une autre application');
+    }
 
     // Delete associated PDF files from storage if they exist
     if (invoice.pdfStorageId) {
@@ -395,27 +406,11 @@ export const duplicateInvoice = mutation({
     if (!originalInvoice || originalInvoice.userId !== userId) {
       throw new Error('Invoice not found');
     }
+    if (isExternalSource(originalInvoice.source)) {
+      throw new Error('Facture gérée par une autre application');
+    }
 
-    // Generate new invoice number using the same logic as createInvoice
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const prefix = `${year}${month}`;
-
-    // Find the highest invoice number for this month
-    const invoices = await ctx.db
-      .query('invoices')
-      .withIndex('by_user', q => q.eq('userId', userId))
-      .collect();
-
-    const monthInvoices = invoices.filter(inv => inv.invoiceNumber.startsWith(prefix));
-    const maxNumber = monthInvoices.reduce((max, inv) => {
-      const num = parseInt(inv.invoiceNumber.slice(-2));
-      return Math.max(max, num);
-    }, 0);
-
-    const nextNumber = String(maxNumber + 1).padStart(2, '0');
-    const invoiceNumber = `${prefix}${nextNumber}`;
+    const invoiceNumber = await nextInvoiceNumber(ctx, userId, new Date());
 
     // Create duplicate with new data
     const currentDate = Date.now();
@@ -453,6 +448,38 @@ export const updateInvoicePDF = mutation({
     await ctx.db.patch(args.invoiceId, {
       pdfStorageId: args.pdfStorageId,
     });
+  },
+});
+
+// Marque/démarque une facture comme récurrente — le cron mensuel
+// (recurring.ts) génère alors une occurrence par mois à partir de la plus
+// récente de la série. Refusé sur les factures importées : leur cycle de
+// vie appartient à l'application source.
+export const setInvoiceRecurring = mutation({
+  args: { id: v.id('invoices'), recurring: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const invoice = await ctx.db.get(args.id);
+    if (!invoice || invoice.userId !== userId) {
+      throw new Error('Invoice not found');
+    }
+    if (isExternalSource(invoice.source)) {
+      throw new Error('Facture gérée par une autre application');
+    }
+
+    // Appliqué à toute la série (racine + occurrences) : le toggle agit
+    // pareil quelle que soit l'occurrence cliquée.
+    const key = invoice.recurringFrom ?? invoice._id;
+    const root = await ctx.db.get(key);
+    const occurrences = await ctx.db
+      .query('invoices')
+      .withIndex('by_recurring_from', q => q.eq('recurringFrom', key))
+      .collect();
+    for (const inv of [...(root ? [root] : []), ...occurrences]) {
+      await ctx.db.patch(inv._id, { recurring: args.recurring });
+    }
   },
 });
 

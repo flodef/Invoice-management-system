@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
+import type * as crons from "../crons.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as importInvoice from "../importInvoice.js";
@@ -17,8 +18,10 @@ import type * as invoices from "../invoices.js";
 import type * as migrations_cleanupTestClients from "../migrations/cleanupTestClients.js";
 import type * as migrations_vendorEmails from "../migrations/vendorEmails.js";
 import type * as pdf from "../pdf.js";
+import type * as recurring from "../recurring.js";
 import type * as router from "../router.js";
 import type * as services from "../services.js";
+import type * as sources from "../sources.js";
 import type * as statusSync from "../statusSync.js";
 import type * as uploadInvoice from "../uploadInvoice.js";
 import type * as userProfile from "../userProfile.js";
@@ -33,6 +36,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   clients: typeof clients;
+  crons: typeof crons;
   email: typeof email;
   http: typeof http;
   importInvoice: typeof importInvoice;
@@ -40,8 +44,10 @@ declare const fullApi: ApiFromModules<{
   "migrations/cleanupTestClients": typeof migrations_cleanupTestClients;
   "migrations/vendorEmails": typeof migrations_vendorEmails;
   pdf: typeof pdf;
+  recurring: typeof recurring;
   router: typeof router;
   services: typeof services;
+  sources: typeof sources;
   statusSync: typeof statusSync;
   uploadInvoice: typeof uploadInvoice;
   userProfile: typeof userProfile;

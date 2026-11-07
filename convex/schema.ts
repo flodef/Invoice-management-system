@@ -77,11 +77,19 @@ const applicationTables = {
     kind: v.optional(v.string()),
     creditFor: v.optional(v.string()),
     refundedBy: v.optional(v.string()),
+    // Facturation récurrente — une occurrence est générée chaque mois le 1er
+    // (cron recurring.ts) à partir de la plus récente de la série.
+    // recurringFrom pointe sur la facture racine de la série (absent sur la
+    // racine elle-même et sur les factures non récurrentes).
+    recurring: v.optional(v.boolean()),
+    recurringFrom: v.optional(v.id('invoices')),
   })
     .index('by_user', ['userId'])
     .index('by_user_and_date', ['userId', 'invoiceDate'])
     .index('by_invoice_number', ['invoiceNumber'])
-    .index('by_user_and_number', ['userId', 'invoiceNumber']),
+    .index('by_user_and_number', ['userId', 'invoiceNumber'])
+    .index('by_recurring', ['recurring'])
+    .index('by_recurring_from', ['recurringFrom']),
 };
 
 export default defineSchema({

@@ -5,6 +5,9 @@ import {
   IconFileDownload,
   IconMail,
   IconPlus,
+  IconRepeat,
+  IconRepeatOff,
+  IconRobot,
   IconTrash,
   IconUpload,
   IconX,
@@ -13,6 +16,7 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../convex/_generated/api';
+import { externalSourceLabel, isExternalSource } from '../../convex/sources';
 import { InvoiceEditorModal } from './InvoiceEditorModal';
 import { UploadInvoiceModal } from './UploadInvoiceModal';
 
@@ -31,6 +35,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const deleteInvoice = useMutation(api.invoices.deleteInvoice);
   const duplicateInvoice = useMutation(api.invoices.duplicateInvoice);
   const toggleInvoiceStatus = useMutation(api.invoices.toggleInvoiceStatus);
+  const setInvoiceRecurring = useMutation(api.invoices.setInvoiceRecurring);
   const generatePDF = useAction(api.pdf.generateInvoicePDF);
   const getStorageUrl = useAction(api.pdf.getStorageUrl);
   const sendInvoiceEmail = useAction(api.email.sendInvoiceEmail);
@@ -110,6 +115,16 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       toast.error('Échec de la duplication de la facture');
       // Close confirmation modal
       setShowDuplicateConfirm(null);
+    }
+  };
+
+  const handleToggleRecurring = async (invoice: (typeof invoices)[number]) => {
+    try {
+      const recurring = !invoice.recurring;
+      await setInvoiceRecurring({ id: invoice._id, recurring });
+      toast.success(recurring ? 'Facture marquée récurrente — envoi auto le 1er du mois à 8h' : 'Récurrence arrêtée');
+    } catch {
+      toast.error('Échec de la mise à jour de la récurrence');
     }
   };
 
@@ -295,6 +310,11 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     setShowPdfViewer(null);
   };
 
+  // Éligible à la duplication manuelle du mois précédent — les factures auto
+  // (importées) et récurrentes sont déjà couvertes par leur source / le cron.
+  const isManuallyDuplicable = (invoice: (typeof invoices)[number]) =>
+    !isExternalSource(invoice.source) && !invoice.recurring && !invoice.recurringFrom;
+
   // Duplicate all invoices from the previous month to the current month
   const handleDuplicatePreviousMonth = async () => {
     try {
@@ -303,6 +323,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
       // Get the previous month's invoices
       const previousMonthKey = getPreviousMonthKey();
       const previousMonthInvoices = invoices.filter(invoice => {
+        if (!isManuallyDuplicable(invoice)) return false;
         const date = new Date(invoice.invoiceDate);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         return monthKey === previousMonthKey;
@@ -403,6 +424,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
   const hasPreviousMonthInvoices = () => {
     const previousMonthKey = getPreviousMonthKey();
     return invoices.some(invoice => {
+      if (!isManuallyDuplicable(invoice)) return false;
       const date = new Date(invoice.invoiceDate);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       return monthKey === previousMonthKey;
@@ -478,6 +500,43 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
   const unpaidInvoices = invoices.filter(
     invoice => invoice.status === 'sent' && new Date(calculateDueDate(invoice.invoiceDate).getTime()) < new Date(),
+  );
+
+  // Pastilles à côté du n° de facture : série récurrente / facture auto
+  // (importée par une autre application — non modifiable ici).
+  const invoiceBadges = (invoice: (typeof invoices)[number]) => (
+    <>
+      {invoice.recurring && (
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium whitespace-nowrap">
+          <IconRepeat size={14} stroke={1.5} />
+          Récurrente
+        </span>
+      )}
+      {isExternalSource(invoice.source) && (
+        <span
+          className="inline-flex items-center gap-1 px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium whitespace-nowrap"
+          title="Gérée par une autre application — récurrente par défaut"
+        >
+          <IconRobot size={14} stroke={1.5} />
+          Auto · {externalSourceLabel(invoice.source)}
+        </span>
+      )}
+    </>
+  );
+
+  // Bouton récurrence — tous statuts ; masqué sur les factures auto.
+  const recurringToggleButton = (invoice: (typeof invoices)[number]) => (
+    <button
+      onClick={() => void handleToggleRecurring(invoice)}
+      className={`p-2 rounded-md ${
+        invoice.recurring
+          ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-50'
+          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+      }`}
+      title={invoice.recurring ? 'Arrêter la récurrence' : 'Rendre récurrente'}
+    >
+      {invoice.recurring ? <IconRepeatOff size={20} stroke={1.5} /> : <IconRepeat size={20} stroke={1.5} />}
+    </button>
   );
 
   return (
@@ -580,6 +639,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                       <div className="divide-y divide-gray-200">
                         {monthInvoices.map(invoice => {
                           const isDraft = invoice.status === 'draft';
+                          const isAuto = isExternalSource(invoice.source);
                           return (
                             <div key={invoice._id} className="p-4 hover:bg-gray-50">
                               {/* Mobile: Stack layout - Content on top, buttons below */}
@@ -598,8 +658,11 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                   </div>
 
                                   <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
+                                    <div className="min-w-0">
+                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
+                                        {invoiceBadges(invoice)}
+                                      </div>
                                       <p className="text-gray-500 text-xs">
                                         {formatDate(invoice.invoiceDate)} →{' '}
                                         {formatDate(calculateDueDate(invoice.invoiceDate).getTime())}
@@ -611,7 +674,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
                                 {/* Action buttons below on mobile */}
                                 <div className="flex justify-center gap-3 border-t pt-2 mt-2">
-                                  {isDraft && (
+                                  {isDraft && !isAuto && (
                                     <button
                                       onClick={() => {
                                         setInvoiceToEditId(invoice._id);
@@ -623,7 +686,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                       <IconEdit size={20} stroke={1.5} />
                                     </button>
                                   )}
-                                  {isDraft && (
+                                  {isDraft && !isAuto && (
                                     <button
                                       onClick={() => setShowEmailConfirm(invoice._id)}
                                       className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
@@ -639,14 +702,17 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                   >
                                     <IconEye size={20} stroke={1.5} />
                                   </button>
-                                  <button
-                                    onClick={() => void handleDuplicate(invoice._id)}
-                                    className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
-                                    title="Dupliquer"
-                                  >
-                                    <IconCopy size={20} stroke={1.5} />
-                                  </button>
-                                  {isDraft && (
+                                  {!isAuto && (
+                                    <button
+                                      onClick={() => void handleDuplicate(invoice._id)}
+                                      className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
+                                      title="Dupliquer"
+                                    >
+                                      <IconCopy size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                  {!isAuto && recurringToggleButton(invoice)}
+                                  {isDraft && !isAuto && (
                                     <button
                                       onClick={() => setShowDeleteConfirm(invoice._id)}
                                       className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
@@ -664,6 +730,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                                     <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
                                     <p className="text-gray-600">#{invoice.invoiceNumber}</p>
+                                    {invoiceBadges(invoice)}
                                     <p className="text-gray-500 text-sm">
                                       {formatDate(invoice.invoiceDate)} →{' '}
                                       {formatDate(calculateDueDate(invoice.invoiceDate).getTime())}
@@ -684,7 +751,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                   </div>
                                 </div>
                                 <div className="flex gap-2">
-                                  {isDraft && (
+                                  {isDraft && !isAuto && (
                                     <button
                                       onClick={() => {
                                         setInvoiceToEditId(invoice._id);
@@ -696,7 +763,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                       <IconEdit size={20} stroke={1.5} />
                                     </button>
                                   )}
-                                  {isDraft && (
+                                  {isDraft && !isAuto && (
                                     <button
                                       onClick={() => setShowEmailConfirm(invoice._id)}
                                       className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50"
@@ -712,14 +779,17 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                                   >
                                     <IconEye size={20} stroke={1.5} />
                                   </button>
-                                  <button
-                                    onClick={() => void handleDuplicate(invoice._id)}
-                                    className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
-                                    title="Dupliquer"
-                                  >
-                                    <IconCopy size={20} stroke={1.5} />
-                                  </button>
-                                  {isDraft && (
+                                  {!isAuto && (
+                                    <button
+                                      onClick={() => void handleDuplicate(invoice._id)}
+                                      className="text-orange-600 hover:text-orange-800 p-2 rounded-md hover:bg-orange-50"
+                                      title="Dupliquer"
+                                    >
+                                      <IconCopy size={20} stroke={1.5} />
+                                    </button>
+                                  )}
+                                  {!isAuto && recurringToggleButton(invoice)}
+                                  {isDraft && !isAuto && (
                                     <button
                                       onClick={() => setShowDeleteConfirm(invoice._id)}
                                       className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50"
@@ -754,10 +824,11 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                   // Check if the current invoice is a draft (status !== 'sent')
                   const currentInvoice = invoices.find(inv => inv._id === showPdfViewer);
                   const isDraft = currentInvoice?.status === 'draft';
+                  const isAuto = isExternalSource(currentInvoice?.source);
 
                   return (
                     <>
-                      {isDraft && (
+                      {isDraft && !isAuto && (
                         <button
                           onClick={() => setShowEmailConfirm(showPdfViewer)}
                           className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"

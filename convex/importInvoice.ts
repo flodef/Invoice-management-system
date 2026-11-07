@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { httpAction, internalMutation, internalQuery } from './_generated/server';
 import { api, internal } from './_generated/api';
 import { calculatePaymentDate } from './utils';
+import { isExternalSource } from './sources';
 import type { Id } from './_generated/dataModel';
 
 function roundToTwoDecimals(num: number): number {
@@ -287,12 +288,6 @@ export const createCreditNote = internalMutation({
     return { ok: true, invoiceId, invoiceNumber: creditNumber, created: true };
   },
 });
-
-// Rows created through the bearer-authenticated import path — only these may
-// be read/mutated by the external endpoints (avoir, suppression, statut).
-// 'job-conciergerie*' covers JC (et '-test'), 'tradiz' les imports Tradiz.
-const isExternalSource = (source?: string): boolean =>
-  !!source && (source.startsWith('job-conciergerie') || source === 'tradiz');
 
 // Shared bearer auth — the secret is a deployment env var
 // (IMS_IMPORT_SECRET), never in the codebase. trim() : un whitespace

@@ -63,7 +63,11 @@ const sendInvoiceEmailCore = async (
   };
 
   // Create email content
-  const invoiceDate = new Date(invoice.invoiceDate);
+  // « du mois de … » = période facturée (mois échu) quand serviceEndDate
+  // existe — imports JC et occurrences récurrentes la renseignent.
+  const periodMonth = new Date(invoice.serviceEndDate ?? invoice.invoiceDate).toLocaleString('fr-FR', {
+    month: 'long',
+  });
 
   // Random greeting
   const greetings = ['Bonjour', 'Salut', 'Coucou'];
@@ -73,7 +77,7 @@ const sendInvoiceEmailCore = async (
   const emailBody = `
 ${randomGreeting} ${invoice.client.contactName || invoice.client.name},
 ${customMessage ? `\n${customMessage}\n` : ''}
-Voici la facture n°${invoice.invoiceNumber} du mois de ${invoiceDate.toLocaleString('fr-FR', { month: 'long' })} d'un montant de ${formatCurrency(invoice.totalAmount)}.
+Voici la facture n°${invoice.invoiceNumber} du mois de ${periodMonth} d'un montant de ${formatCurrency(invoice.totalAmount)}.
 
 En te souhaitant une excellente journée,
 
