@@ -502,14 +502,17 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
     invoice => invoice.status === 'sent' && new Date(calculateDueDate(invoice.invoiceDate).getTime()) < new Date(),
   );
 
-  // Pastilles à côté du n° de facture : série récurrente / facture auto
-  // (importée par une autre application — non modifiable ici).
+  // Badges récurrente / auto — libellé complet sur desktop (sm+), icône
+  // seule pour la récurrence sur mobile (espace limité à côté du nom).
   const invoiceBadges = (invoice: (typeof invoices)[number]) => (
     <>
       {invoice.recurring && (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium whitespace-nowrap">
+        <span
+          className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium whitespace-nowrap"
+          title="Récurrente — envoi auto le 1er du mois à 8h"
+        >
           <IconRepeat size={14} stroke={1.5} />
-          Récurrente
+          <span className="hidden sm:inline">Récurrente</span>
         </span>
       )}
       {isExternalSource(invoice.source) && (
@@ -518,7 +521,8 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
           title="Gérée par une autre application — récurrente par défaut"
         >
           <IconRobot size={14} stroke={1.5} />
-          Auto · {externalSourceLabel(invoice.source)}
+          <span className="hidden sm:inline">Auto · </span>
+          {externalSourceLabel(invoice.source)}
         </span>
       )}
     </>
@@ -646,7 +650,10 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                               <div className="block sm:hidden">
                                 <div className="mb-3">
                                   <div className="flex justify-between items-center mb-2">
-                                    <p className="font-semibold truncate flex-1">{invoice.clientName}</p>
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <p className="font-semibold truncate">{invoice.clientName}</p>
+                                      <span className="flex items-center gap-1 shrink-0">{invoiceBadges(invoice)}</span>
+                                    </div>
                                     <span
                                       onClick={() => void handleToggleStatus(invoice._id, invoice.status)}
                                       className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -659,10 +666,7 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
 
                                   <div className="flex justify-between items-center">
                                     <div className="min-w-0">
-                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                        <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
-                                        {invoiceBadges(invoice)}
-                                      </div>
+                                      <p className="text-gray-600 text-sm">#{invoice.invoiceNumber}</p>
                                       <p className="text-gray-500 text-xs">
                                         {formatDate(invoice.invoiceDate)} →{' '}
                                         {formatDate(calculateDueDate(invoice.invoiceDate).getTime())}
@@ -728,9 +732,11 @@ export function InvoiceList({ onEditInvoice }: InvoiceListProps) {
                               <div className="hidden sm:flex flex-wrap justify-between items-center">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                                    <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <p className="text-gray-600 font-semibold truncate">{invoice.clientName}</p>
+                                      {invoiceBadges(invoice)}
+                                    </div>
                                     <p className="text-gray-600">#{invoice.invoiceNumber}</p>
-                                    {invoiceBadges(invoice)}
                                     <p className="text-gray-500 text-sm">
                                       {formatDate(invoice.invoiceDate)} →{' '}
                                       {formatDate(calculateDueDate(invoice.invoiceDate).getTime())}
